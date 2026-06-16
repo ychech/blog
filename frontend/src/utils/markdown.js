@@ -1,0 +1,76 @@
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js/lib/core'
+import go from 'highlight.js/lib/languages/go'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import java from 'highlight.js/lib/languages/java'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import sql from 'highlight.js/lib/languages/sql'
+import yaml from 'highlight.js/lib/languages/yaml'
+import 'highlight.js/styles/github.css'
+
+// 按需注册常用语言，避免打包全部语言导致体积过大
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('yaml', yaml)
+
+// 配置 markdown-it：启用自动链接、排版增强，但禁用原始 HTML 防止 XSS
+// 代码块使用 highlight.js 进行语法高亮
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+  highlight: (str, lang) => {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return `<pre class="hljs"><code>${hljs.highlight(str, { language: lang, ignoreIllegals: true }).value}</code></pre>`
+      } catch (__) {
+        // 忽略高亮失败，使用默认转义
+      }
+    }
+    return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`
+  }
+})
+
+/**
+ * 渲染 Markdown 为 HTML
+ * @param {string} text
+ * @returns {string}
+ */
+export const renderMarkdown = (text) => {
+  if (!text) return ''
+  return md.render(text)
+}
+
+/**
+ * 去除 Markdown 标记，提取纯文本摘要
+ * @param {string} text
+ * @param {number} maxLength
+ * @returns {string}
+ */
+export const stripMarkdown = (text, maxLength = 120) => {
+  if (!text) return ''
+  const html = md.render(text)
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  let plain = tmp.textContent || tmp.innerText || ''
+  plain = plain.replace(/\s+/g, ' ').trim()
+  if (plain.length > maxLength) {
+    plain = plain.slice(0, maxLength) + '...'
+  }
+  return plain
+}
