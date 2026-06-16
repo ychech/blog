@@ -9,6 +9,7 @@ import (
 	"blog/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -23,11 +24,12 @@ func Setup() *gin.Engine {
 	// gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// 全局中间件：恢复 panic -> 记录请求日志 -> 处理跨域 -> 接口限流
+	// 全局中间件：恢复 panic -> 记录请求日志 -> Prometheus 指标 -> 处理跨域 -> 接口限流
 	// 注意顺序：Recovery 放在最前面，可以捕获后续中间件中的 panic；
 	// RateLimit 放在最后，对请求频率进行全局控制。
 	r.Use(middleware.Recovery())
 	r.Use(middleware.Logger())
+	r.Use(middleware.PrometheusMetrics())
 	r.Use(middleware.Cors())
 	r.Use(middleware.RateLimit())
 
@@ -37,6 +39,9 @@ func Setup() *gin.Engine {
 
 	// 健康检查接口，用于负载均衡、容器探针或服务启动后快速验证
 	r.GET("/health", handler.HealthCheck)
+
+	// Prometheus 指标接口，供 Prometheus 服务器抓取（访问 /metrics）
+	r.GET("/metrics", gin.WrapH(promhttp.HandlerFor(middleware.MetricsRegistry(), promhttp.HandlerOpts{})))
 
 	// Swagger API 文档（访问 /swagger/index.html）
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

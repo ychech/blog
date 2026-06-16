@@ -27,6 +27,7 @@
 10. **接口限流**：基于客户端 IP 的固定窗口限流，防止接口被刷
 11. **健康检查**：`/health` 接口检查 MySQL、Redis 依赖状态
 12. **优雅关闭**：收到 SIGINT/SIGTERM 后等待正在处理的请求完成再退出
+13. **Prometheus 监控**：自动收集请求数、耗时、请求/响应大小指标，暴露 `/metrics` 接口
 
 ## 项目结构
 
@@ -348,6 +349,58 @@ curl http://localhost:8080/health
 当 MySQL 不可用时返回 HTTP 503，并将 `status` 设置为 `unhealthy`。
 Redis 为可选依赖，连接失败不影响整体健康状态。
 
+## 监控（Prometheus）
+
+项目已接入 Prometheus 客户端库，启动服务后访问：
+
+```bash
+curl http://localhost:8080/metrics
+```
+
+### 已暴露指标
+
+| 指标名 | 类型 | 说明 |
+|---|---|---|
+| `http_requests_total` | Counter | HTTP 请求总数，标签：`method`、`path`、`status` |
+| `http_request_duration_seconds` | Histogram | HTTP 请求处理耗时，标签：`method`、`path` |
+| `http_request_size_bytes` | Histogram | HTTP 请求体大小，标签：`method`、`path` |
+| `http_response_size_bytes` | Histogram | HTTP 响应体大小，标签：`method`、`path` |
+
+### 本地启动 Prometheus
+
+创建 `prometheus.yml`：
+
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'blog'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+```
+
+使用 Docker 启动 Prometheus：
+
+```bash
+docker run -d \
+  -p 9090:9090 \
+  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
+  prom/prometheus
+```
+
+打开 http://localhost:9090 即可查询指标，例如：
+
+```promql
+rate(http_requests_total[1m])
+```
+
+### Grafana 可视化
+
+1. 启动 Grafana：`docker run -d -p 3000:3000 grafana/grafana`
+2. 添加 Prometheus 数据源：http://localhost:9090
+3. 导入官方 **Gin** 或 **Go Processes** 仪表盘，或自建面板展示 QPS、P99 耗时、错误率等
+
 ## API 文档
 
 ### 认证
@@ -571,6 +624,7 @@ air
 7. **启用日志轮转**：生产环境建议将 zap 日志输出到文件，并配合 loki/logrotate 收集。
 8. **调整限流阈值**：根据实际流量调整 `RATE_LIMIT_REQUESTS` 与 `RATE_LIMIT_WINDOW_SEC`。
 9. **配置优雅关闭超时**：根据接口平均耗时调整 `main.go` 中的 `Shutdown` 超时时间。
+10. **接入 Prometheus/Grafana**：生产环境部署 Prometheus 抓取 `/metrics`，配置告警规则（如 5xx 错误率、P99 耗时）。
 
 ### 常见问题
 
@@ -620,6 +674,7 @@ Authorization: Bearer <你的 token>
 21. **接口限流实现**：固定窗口计数、内存 map + 定时清理、429 错误码与 Retry-After 响应头
 22. **优雅关闭**：http.Server.Shutdown + context 超时控制，保证发布不丢请求
 23. **健康检查设计**：依赖探测区分关键依赖（MySQL）与可选依赖（Redis），返回对应 HTTP 状态码
+24. **Prometheus 监控**：Counter/Histogram 指标收集，私有 Registry 避免全局冲突，/metrics 接口暴露
 
 ## 后续可扩展
 
@@ -636,7 +691,7 @@ Authorization: Bearer <你的 token>
 - [ ] 单元测试与集成测试：为 service 层添加测试用例
 - [ ] 配置中心：使用 Viper 支持多环境配置文件
 - [ ] 评论回复通知：被回复时发送通知
+- [x] 可观测性：接入 Prometheus + Grafana 监控与告警
 - [ ] 分布式限流：多实例部署时使用 Redis 实现全局限流
-- [ ] 可观测性：接入 Prometheus + Grafana 监控与告警
 - [ ] 链路追踪：接入 Jaeger/SkyWalking 定位慢请求
 - [ ] 文章搜索优化：接入 Elasticsearch 或 Meilisearch
