@@ -87,3 +87,25 @@ func migrate() error {
 		&model.UserBadge{},
 	)
 }
+
+// Close 优雅关闭数据库连接。
+// 在程序退出时调用，关闭 MySQL 与 Redis 连接，避免连接泄露。
+func Close() error {
+	if DB != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			return err
+		}
+		if err := sqlDB.Close(); err != nil {
+			return err
+		}
+	}
+
+	if Redis != nil {
+		if err := Redis.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

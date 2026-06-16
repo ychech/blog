@@ -23,3 +23,9 @@ jwt:
 app:
   upload_path: uploads
   max_upload_size: 10
+
+# 接口限流配置（基于客户端 IP 的固定窗口限流）
+rate_limit:
+  enabled: true
+  requests: 100
+  window_sec: 60

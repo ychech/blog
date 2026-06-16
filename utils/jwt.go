@@ -18,8 +18,6 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-var jwtSecret = []byte(config.C.JWT.Secret)
-
 // GenerateToken 生成 JWT Token
 func GenerateToken(userID uint, username string, role model.UserRole) (string, error) {
 	cfg := config.C.JWT
@@ -38,7 +36,7 @@ func GenerateToken(userID uint, username string, role model.UserRole) (string, e
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString([]byte(cfg.Secret))
 }
 
 // ParseToken 解析 JWT Token
@@ -48,7 +46,7 @@ func ParseToken(tokenString string) (*JWTClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return jwtSecret, nil
+		return []byte(config.C.JWT.Secret), nil
 	})
 
 	if err != nil {

@@ -24,6 +24,9 @@
 7. **Redis 缓存**：分类列表、标签列表、热门文章、文章详情
 8. **统一响应格式**：统一错误码、统一 JSON 响应
 9. **中间件**：请求日志、panic 恢复、跨域
+10. **接口限流**：基于客户端 IP 的固定窗口限流，防止接口被刷
+11. **健康检查**：`/health` 接口检查 MySQL、Redis 依赖状态
+12. **优雅关闭**：收到 SIGINT/SIGTERM 后等待正在处理的请求完成再退出
 
 ## 项目结构
 
@@ -170,7 +173,7 @@ cd blog
 go run main.go
 ```
 
-默认访问：http://localhost:8080/ping
+默认访问：http://localhost:8080/health
 
 ### 4. 查看 Redis 缓存
 
@@ -289,6 +292,9 @@ npm run build
 | JWT_EXPIRE_HOUR | 24 | Token 过期时间（小时） |
 | UPLOAD_PATH | uploads | 上传文件保存目录 |
 | MAX_UPLOAD_SIZE | 10 | 最大上传文件大小（MB） |
+| RATE_LIMIT_ENABLED | true | 是否启用接口限流 |
+| RATE_LIMIT_REQUESTS | 100 | 限流窗口内最大请求数 |
+| RATE_LIMIT_WINDOW_SEC | 60 | 限流窗口长度（秒） |
 
 ## 响应格式
 
@@ -314,8 +320,33 @@ npm run build
 | 401 | 未授权 | 401 | 缺少 Token、Token 无效或过期 |
 | 403 | 禁止访问 | 403 | 权限不足（预留） |
 | 404 | 资源不存在 | 404 | 接口不存在、文章/分类未找到 |
+| 429 | 请求过于频繁 | 429 | 触发接口限流 |
 | 500 | 服务器内部错误 | 500 | 数据库异常、未知 panic |
 | 1001 | 业务错误 | 200 | 用户名已存在、无权修改文章等 |
+
+## 健康检查
+
+服务启动后可通过 `/health` 检查运行状态：
+
+```bash
+curl http://localhost:8080/health
+```
+
+正常响应（HTTP 200）：
+
+```json
+{
+  "status": "ok",
+  "time": "2024-01-01T12:00:00+08:00",
+  "dependencies": {
+    "mysql": true,
+    "redis": true
+  }
+}
+```
+
+当 MySQL 不可用时返回 HTTP 503，并将 `status` 设置为 `unhealthy`。
+Redis 为可选依赖，连接失败不影响整体健康状态。
 
 ## API 文档
 
@@ -538,6 +569,8 @@ air
 5. **配置独立 MySQL/Redis**：避免使用 docker-compose 中的默认弱密码。
 6. **限制上传文件大小**：根据需求调整 `MAX_UPLOAD_SIZE`。
 7. **启用日志轮转**：生产环境建议将 zap 日志输出到文件，并配合 loki/logrotate 收集。
+8. **调整限流阈值**：根据实际流量调整 `RATE_LIMIT_REQUESTS` 与 `RATE_LIMIT_WINDOW_SEC`。
+9. **配置优雅关闭超时**：根据接口平均耗时调整 `main.go` 中的 `Shutdown` 超时时间。
 
 ### 常见问题
 
@@ -584,6 +617,9 @@ Authorization: Bearer <你的 token>
 18. **前端权限控制**：路由守卫根据用户角色拦截管理员页面
 19. **性能优化**：批量查询点赞数消除 N+1；JWT 携带角色信息避免管理员中间件重复查库；评论点赞状态批量接口；搜索输入防抖
 20. **勋章 / NFT 奖励系统**：管理员可创建并颁发勋章，支持 NFT 元数据字段，用户在个人资料展示
+21. **接口限流实现**：固定窗口计数、内存 map + 定时清理、429 错误码与 Retry-After 响应头
+22. **优雅关闭**：http.Server.Shutdown + context 超时控制，保证发布不丢请求
+23. **健康检查设计**：依赖探测区分关键依赖（MySQL）与可选依赖（Redis），返回对应 HTTP 状态码
 
 ## 后续可扩展
 
@@ -600,4 +636,7 @@ Authorization: Bearer <你的 token>
 - [ ] 单元测试与集成测试：为 service 层添加测试用例
 - [ ] 配置中心：使用 Viper 支持多环境配置文件
 - [ ] 评论回复通知：被回复时发送通知
+- [ ] 分布式限流：多实例部署时使用 Redis 实现全局限流
+- [ ] 可观测性：接入 Prometheus + Grafana 监控与告警
+- [ ] 链路追踪：接入 Jaeger/SkyWalking 定位慢请求
 - [ ] 文章搜索优化：接入 Elasticsearch 或 Meilisearch

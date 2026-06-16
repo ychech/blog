@@ -23,20 +23,20 @@ func Setup() *gin.Engine {
 	// gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// 全局中间件：恢复 panic -> 记录请求日志 -> 处理跨域
-	// 注意顺序：Recovery 放在最前面，可以捕获后续中间件中的 panic
+	// 全局中间件：恢复 panic -> 记录请求日志 -> 处理跨域 -> 接口限流
+	// 注意顺序：Recovery 放在最前面，可以捕获后续中间件中的 panic；
+	// RateLimit 放在最后，对请求频率进行全局控制。
 	r.Use(middleware.Recovery())
 	r.Use(middleware.Logger())
 	r.Use(middleware.Cors())
+	r.Use(middleware.RateLimit())
 
 	// 静态文件服务：上传的图片可通过 http://host/uploads/xxx.png 直接访问
 	cfg := config.C.App
 	r.Static("/uploads", cfg.UploadPath)
 
-	// 健康检查接口，用于服务启动后快速验证
-	r.GET("/ping", func(c *gin.Context) {
-		utils.Success(c, gin.H{"message": "pong"})
-	})
+	// 健康检查接口，用于负载均衡、容器探针或服务启动后快速验证
+	r.GET("/health", handler.HealthCheck)
 
 	// Swagger API 文档（访问 /swagger/index.html）
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

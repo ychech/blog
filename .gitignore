@@ -11,6 +11,7 @@
 
 # Go build output (binary named after module or main package)
 /blog
+/blog-server
 /main
 
 # Environment variables

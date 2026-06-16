@@ -139,6 +139,17 @@ func applyEnvMap(cfg *Config, vars map[string]string) {
 	if v, ok := getEnv(vars, "MAX_UPLOAD_SIZE"); ok && v != "" {
 		cfg.App.MaxUploadSize = parseInt64(v, cfg.App.MaxUploadSize)
 	}
+
+	// RateLimit 配置
+	if v, ok := getEnv(vars, "RATE_LIMIT_ENABLED"); ok && v != "" {
+		cfg.RateLimit.Enabled = parseBool(v, cfg.RateLimit.Enabled)
+	}
+	if v, ok := getEnv(vars, "RATE_LIMIT_REQUESTS"); ok && v != "" {
+		cfg.RateLimit.Requests = parseInt(v, cfg.RateLimit.Requests)
+	}
+	if v, ok := getEnv(vars, "RATE_LIMIT_WINDOW_SEC"); ok && v != "" {
+		cfg.RateLimit.WindowSec = parseInt(v, cfg.RateLimit.WindowSec)
+	}
 }
 
 // envToMap 把当前进程的系统环境变量列表转换为 map。
@@ -174,4 +185,17 @@ func parseInt64(s string, defaultValue int64) int64 {
 		return defaultValue
 	}
 	return result
+}
+
+// parseBool 将字符串解析为 bool，解析失败时返回 defaultValue。
+// 用于解析 RATE_LIMIT_ENABLED 等布尔类型环境变量。
+func parseBool(s string, defaultValue bool) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "true", "1", "yes", "on":
+		return true
+	case "false", "0", "no", "off":
+		return false
+	default:
+		return defaultValue
+	}
 }

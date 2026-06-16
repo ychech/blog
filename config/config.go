@@ -36,11 +36,12 @@ var C *Config
 // Config 聚合应用运行所需的全部配置项。
 // 使用 yaml tag 支持 YAML 反序列化，使用 json tag 便于日志输出时序列化。
 type Config struct {
-	Server ServerConfig `yaml:"server" json:"server"` // HTTP 服务监听配置
-	DB     DBConfig     `yaml:"db" json:"db"`         // 数据库连接配置
-	Redis  RedisConfig  `yaml:"redis" json:"redis"`   // Redis 连接配置
-	JWT    JWTConfig    `yaml:"jwt" json:"jwt"`       // JWT 签名与过期配置
-	App    AppConfig    `yaml:"app" json:"app"`       // 应用级配置（上传、静态资源等）
+	Server    ServerConfig    `yaml:"server" json:"server"`       // HTTP 服务监听配置
+	DB        DBConfig        `yaml:"db" json:"db"`               // 数据库连接配置
+	Redis     RedisConfig     `yaml:"redis" json:"redis"`         // Redis 连接配置
+	JWT       JWTConfig       `yaml:"jwt" json:"jwt"`             // JWT 签名与过期配置
+	App       AppConfig       `yaml:"app" json:"app"`             // 应用级配置（上传、静态资源等）
+	RateLimit RateLimitConfig `yaml:"rate_limit" json:"rate_limit"` // 接口限流配置
 }
 
 // ServerConfig 定义 HTTP 服务的监听地址。
@@ -79,6 +80,14 @@ type AppConfig struct {
 	MaxUploadSize int64  `yaml:"max_upload_size" json:"max_upload_size"` // 最大上传文件大小，单位：MB
 }
 
+// RateLimitConfig 定义接口限流配置。
+// 基于客户端 IP 进行固定窗口计数，超过阈值后返回 429 Too Many Requests。
+type RateLimitConfig struct {
+	Enabled   bool `yaml:"enabled" json:"enabled"`     // 是否启用限流
+	Requests  int  `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
+	WindowSec int  `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
+}
+
 // 默认配置常量。
 // 所有硬编码默认值都集中在这里定义，方便统一修改和单元测试引用。
 const (
@@ -102,6 +111,10 @@ const (
 
 	DefaultUploadPath    = "uploads"
 	DefaultMaxUploadSize = 10
+
+	DefaultRateLimitEnabled   = true
+	DefaultRateLimitRequests  = 100
+	DefaultRateLimitWindowSec = 60
 )
 
 // LoadOptions 是配置加载的可选参数，
@@ -140,6 +153,11 @@ func defaultConfig() *Config {
 		App: AppConfig{
 			UploadPath:    DefaultUploadPath,
 			MaxUploadSize: DefaultMaxUploadSize,
+		},
+		RateLimit: RateLimitConfig{
+			Enabled:   DefaultRateLimitEnabled,
+			Requests:  DefaultRateLimitRequests,
+			WindowSec: DefaultRateLimitWindowSec,
 		},
 	}
 }
