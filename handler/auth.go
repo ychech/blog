@@ -97,6 +97,74 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// SendVerificationEmail 发送邮箱验证码（需要登录）
+// @Summary 发送邮箱验证码
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /auth/send-verification-email [post]
+func (h *AuthHandler) SendVerificationEmail(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		utils.NotFound(c, "用户不存在")
+		return
+	}
+
+	if user.Email == "" {
+		utils.BadRequest(c, "请先绑定邮箱")
+		return
+	}
+
+	if err := service.SendVerificationEmail(user.ID, user.Email); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "验证邮件已发送，请查收"})
+}
+
+// VerifyEmail 验证邮箱验证码（需要登录）
+// @Summary 验证邮箱验证码
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.VerifyEmailRequest true "验证码"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /auth/verify-email [post]
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	var req model.VerifyEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := service.VerifyEmail(userID, req.Code); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "邮箱验证成功"})
+}
+
 // UpdateProfile 更新当前登录用户资料
 // @Summary 更新当前登录用户资料
 // @Tags 认证

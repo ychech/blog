@@ -6,6 +6,7 @@ import CreatePostView from '@/views/CreatePostView.vue'
 import EditPostView from '@/views/EditPostView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import AdminView from '@/views/AdminView.vue'
+import NotificationsView from '@/views/NotificationsView.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: HomeView },
@@ -14,7 +15,8 @@ const routes = [
   { path: '/create', name: 'CreatePost', component: CreatePostView, meta: { requiresAuth: true } },
   { path: '/posts/:id/edit', name: 'EditPost', component: EditPostView, meta: { requiresAuth: true }, props: true },
   { path: '/profile', name: 'Profile', component: ProfileView, meta: { requiresAuth: true } },
-  { path: '/admin', name: 'Admin', component: AdminView, meta: { requiresAuth: true, requiresAdmin: true } }
+  { path: '/admin', name: 'Admin', component: AdminView, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/notifications', name: 'Notifications', component: NotificationsView, meta: { requiresAuth: true } }
 ]
 
 const router = createRouter({

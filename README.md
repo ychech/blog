@@ -28,6 +28,17 @@
 11. **健康检查**：`/health` 接口检查 MySQL、Redis 依赖状态
 12. **优雅关闭**：收到 SIGINT/SIGTERM 后等待正在处理的请求完成再退出
 13. **Prometheus 监控**：自动收集请求数、耗时、请求/响应大小指标，暴露 `/metrics` 接口
+14. **阅读量统计**：浏览量先写 Redis，定时同步到 MySQL，降低数据库写压力
+15. **邮箱验证**：注册发送验证码，验证后激活邮箱；可配置是否必须验证后才能登录
+16. **Markdown 目录**：文章详情页自动生成目录，点击可平滑滚动到对应标题
+17. **单元测试**：service/config/utils 层基础单元测试，使用 SQLite 内存数据库隔离
+18. **多环境配置**：基于 Viper 支持 config.dev.yaml / config.prod.yaml 多环境加载
+19. **评论回复通知**：回复他人评论时自动发送通知，支持未读数实时提醒
+20. **分布式限流**：支持 Redis 分布式限流，多实例部署时共享限流状态
+21. **链路追踪**：基于 OpenTelemetry + OTLP，集成 Jaeger/Tempo 定位慢请求
+22. **操作审计日志**：自动记录管理员的写操作，支持后台查询审计日志
+23. **MySQL 读写分离**：基于 GORM dbresolver 插件，读请求自动路由到只读从库
+24. **Meilisearch 搜索**：文章创建/更新/删除同步索引，关键词搜索优先走 Meilisearch
 
 ## 项目结构
 
@@ -278,6 +289,18 @@ npm run build
 
 构建产物输出到 `frontend/dist/`，可与后端一起部署。
 
+### 运行测试
+
+```bash
+cd blog
+go test ./...
+```
+
+当前已覆盖：
+- `config`：默认配置、环境变量覆盖、DSN/Addr 方法
+- `utils`：密码哈希与校验
+- `service`：用户注册、登录、资料更新（使用 SQLite 内存数据库）
+
 ## 环境变量
 
 | 变量名 | 默认值 | 说明 |
@@ -296,6 +319,15 @@ npm run build
 | RATE_LIMIT_ENABLED | true | 是否启用接口限流 |
 | RATE_LIMIT_REQUESTS | 100 | 限流窗口内最大请求数 |
 | RATE_LIMIT_WINDOW_SEC | 60 | 限流窗口长度（秒） |
+| EMAIL_HOST | - | SMTP 服务器地址 |
+| EMAIL_PORT | 587 | SMTP 端口 |
+| EMAIL_USERNAME | - | 发件邮箱 |
+| EMAIL_PASSWORD | - | 邮箱密码/授权码 |
+| EMAIL_FROM | - | 发件人显示名称 |
+| EMAIL_ENABLE_SSL | true | 是否启用 SMTP SSL |
+| EMAIL_VERIFICATION_ENABLED | false | 是否启用邮箱验证 |
+| EMAIL_VERIFICATION_REQUIRED | false | 是否必须验证后才能登录 |
+| EMAIL_VERIFICATION_CODE_TTL_MIN | 30 | 验证码有效期（分钟） |
 
 ## 响应格式
 
@@ -401,6 +433,108 @@ rate(http_requests_total[1m])
 2. 添加 Prometheus 数据源：http://localhost:9090
 3. 导入官方 **Gin** 或 **Go Processes** 仪表盘，或自建面板展示 QPS、P99 耗时、错误率等
 
+## 多环境配置
+
+项目使用 Viper 管理多环境配置，默认根据 `APP_ENV` 或 `BLOG_APP_ENV` 环境变量选择配置文件：
+
+| 环境 | 配置文件 |
+|---|---|
+| dev（默认） | `config.dev.yaml` |
+| prod | `config.prod.yaml` |
+| test | `config.test.yaml` |
+
+加载优先级（从高到低）：
+
+1. 系统环境变量 / `.env` 文件
+2. `config.{env}.yaml`
+3. `config.yaml`
+4. 硬编码默认值
+
+启动生产环境：
+
+```bash
+APP_ENV=prod ./blog-server
+```
+
+## Meilisearch 搜索
+
+项目集成 Meilisearch 提供全文搜索能力：
+
+- 文章创建/更新/删除自动同步到 Meilisearch 索引
+- `/api/posts` 搜索时优先使用 Meilisearch，失败时降级为 MySQL LIKE
+- 支持中文分词、拼音、容错匹配（依赖 Meilisearch 配置）
+
+启动 Meilisearch（Docker）：
+
+```bash
+docker run -d \
+  --name meilisearch \
+  -p 7700:7700 \
+  -e MEILI_MASTER_KEY=your-master-key \
+  -v $(pwd)/meili_data:/meili_data \
+  getmeili/meilisearch:latest
+```
+
+启用搜索：
+
+```bash
+BLOG_MEILISEARCH_ENABLED=true \
+BLOG_MEILISEARCH_HOST=http://localhost:7700 \
+BLOG_MEILISEARCH_API_KEY=your-master-key \
+./blog-server
+```
+
+## MySQL 读写分离
+
+项目使用 GORM 的 `dbresolver` 插件支持读写分离：
+
+- 写操作（INSERT/UPDATE/DELETE）自动路由到主库
+- 读操作（SELECT）自动路由到配置的只读从库
+- 支持多个从库，采用随机负载均衡策略
+
+配置示例（`config.prod.yaml`）：
+
+```yaml
+db:
+  host: mysql-master
+  port: 3306
+  user: blog
+  password: ${DB_PASSWORD}
+  database: blog
+  charset: utf8mb4
+  replicas:
+    - host: mysql-replica-1
+      port: 3306
+      user: blog
+      password: ${DB_PASSWORD}
+    - host: mysql-replica-2
+      port: 3306
+      user: blog
+      password: ${DB_PASSWORD}
+```
+
+## 链路追踪
+
+项目已集成 OpenTelemetry，支持将 trace 数据推送到 Jaeger、Tempo 等兼容 OTLP 的收集器。
+
+启动 Jaeger（Docker）：
+
+```bash
+docker run -d \
+  --name jaeger \
+  -p 16686:16686 \
+  -p 4318:4318 \
+  jaegertracing/all-in-one:latest
+```
+
+启用追踪并启动服务：
+
+```bash
+BLOG_TRACING_ENABLED=true BLOG_TRACING_ENDPOINT=http://localhost:4318/v1/traces ./blog-server
+```
+
+打开 http://localhost:16686 即可查看调用链路、耗时分布和错误追踪。
+
 ## API 文档
 
 ### 认证
@@ -451,6 +585,58 @@ curl -X PUT http://localhost:8080/api/auth/me \
     "avatar":"/uploads/xxx.png"
   }'
 ```
+
+#### 发送邮箱验证码（需登录）
+
+启用邮箱验证后，注册时会自动发送验证码。也可手动触发：
+
+```bash
+curl -X POST http://localhost:8080/api/auth/send-verification-email \
+  -H "Authorization: Bearer <token>"
+```
+
+#### 验证邮箱验证码（需登录）
+
+```bash
+curl -X POST http://localhost:8080/api/auth/verify-email \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"code":"123456"}'
+```
+
+### 通知（需登录）
+
+#### 获取通知列表
+
+```bash
+curl http://localhost:8080/api/notifications \
+  -H "Authorization: Bearer <token>"
+```
+
+#### 获取未读通知数
+
+```bash
+curl http://localhost:8080/api/notifications/unread-count \
+  -H "Authorization: Bearer <token>"
+```
+
+#### 标记通知为已读
+
+```bash
+curl -X PUT http://localhost:8080/api/notifications/1/read \
+  -H "Authorization: Bearer <token>"
+```
+
+### 审计日志（管理员）
+
+#### 查询审计日志
+
+```bash
+curl http://localhost:8080/api/audit-logs?page_size=20 \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+管理员的 POST/PUT/DELETE/PATCH 操作会自动写入 audit_logs 表。
 
 ### 分类
 
@@ -675,6 +861,17 @@ Authorization: Bearer <你的 token>
 22. **优雅关闭**：http.Server.Shutdown + context 超时控制，保证发布不丢请求
 23. **健康检查设计**：依赖探测区分关键依赖（MySQL）与可选依赖（Redis），返回对应 HTTP 状态码
 24. **Prometheus 监控**：Counter/Histogram 指标收集，私有 Registry 避免全局冲突，/metrics 接口暴露
+25. **邮箱验证流程**：Redis 存储验证码 + TTL，SMTP 发送邮件，登录时校验验证状态
+26. **阅读量同步**：Redis 计数削峰，定时任务 + 优雅关闭时批量同步到 MySQL
+27. **Markdown 目录生成**：markdown-it token 解析提取标题，自定义渲染器注入锚点 ID
+28. **单元测试实践**：SQLite 内存数据库隔离 service 层测试，配置/工具函数独立测试
+29. **Viper 多环境配置**：按 APP_ENV 自动选择配置文件，环境变量优先级高于文件
+30. **通知系统设计**：评论回复异步创建通知，前端轮询未读数，支持标记已读
+31. **分布式限流**：Redis + Lua 脚本原子化固定窗口限流，多实例共享限流状态
+32. **链路追踪**：OpenTelemetry SDK + OTLP/HTTP，Gin 中间件自动注入 trace
+33. **审计日志**：c.Next() 后读取用户上下文，异步记录管理员写操作
+34. **读写分离**：GORM dbresolver 插件配置只读从库，读操作自动负载均衡
+35. **Meilisearch 搜索**：文章变更同步索引，搜索接口优先搜索引擎，失败降级 MySQL
 
 ## 后续可扩展
 
@@ -685,13 +882,15 @@ Authorization: Bearer <你的 token>
 - [x] 文章草稿 / 发布状态
 - [x] 后台管理权限（管理员角色）
 - [x] OpenAPI / Swagger 文档
-- [ ] 阅读量统计持久化 + 定时同步到 Redis：先写 Redis 再定时落库，降低 DB 压力
-- [ ] 邮箱注册验证：发送验证邮件，激活后才能登录
-- [ ] Markdown TOC：自动生成文章目录
-- [ ] 单元测试与集成测试：为 service 层添加测试用例
-- [ ] 配置中心：使用 Viper 支持多环境配置文件
-- [ ] 评论回复通知：被回复时发送通知
+- [x] 阅读量统计持久化 + 定时同步到 Redis：先写 Redis 再定时落库，降低 DB 压力
+- [x] 邮箱注册验证：发送验证邮件，激活后才能登录
+- [x] Markdown TOC：自动生成文章目录
+- [x] 单元测试与集成测试：为 service 层添加测试用例
+- [x] 配置中心：使用 Viper 支持多环境配置文件
+- [x] 评论回复通知：被回复时发送通知
 - [x] 可观测性：接入 Prometheus + Grafana 监控与告警
-- [ ] 分布式限流：多实例部署时使用 Redis 实现全局限流
-- [ ] 链路追踪：接入 Jaeger/SkyWalking 定位慢请求
-- [ ] 文章搜索优化：接入 Elasticsearch 或 Meilisearch
+- [x] 分布式限流：多实例部署时使用 Redis 实现全局限流
+- [x] 链路追踪：接入 Jaeger/SkyWalking 定位慢请求
+- [x] 操作审计日志：记录管理员关键操作
+- [x] MySQL 读写分离：主库写、从库读
+- [x] 文章搜索优化：接入 Elasticsearch 或 Meilisearch

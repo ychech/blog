@@ -1,14 +1,39 @@
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
+import { getUnreadCount } from '@/api/notification'
 
 const { isLoggedIn, user, clearAuth } = useUserStore()
 const router = useRouter()
 
+const unreadCount = ref(0)
+let pollTimer = null
+
+const fetchUnreadCount = async () => {
+  if (!isLoggedIn.value) return
+  try {
+    const res = await getUnreadCount()
+    unreadCount.value = res.data?.count || 0
+  } catch (e) {
+    // 静默失败
+  }
+}
+
 const logout = () => {
   clearAuth()
+  unreadCount.value = 0
   router.push('/login')
 }
+
+onMounted(() => {
+  fetchUnreadCount()
+  pollTimer = setInterval(fetchUnreadCount, 30000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
 </script>
 
 <template>
@@ -24,6 +49,10 @@ const logout = () => {
           </template>
           <template v-else>
             <router-link v-if="user?.role === 'admin'" to="/admin">管理后台</router-link>
+            <router-link to="/notifications" class="notification-link">
+              🔔
+              <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+            </router-link>
             <router-link to="/profile" class="nickname">{{ user?.nickname || user?.username }}</router-link>
             <a href="#" @click.prevent="logout">退出</a>
           </template>
@@ -106,6 +135,24 @@ body {
 .nickname {
   color: #3498db;
   font-weight: 500;
+}
+
+.notification-link {
+  position: relative;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background-color: #e74c3c;
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  line-height: 1.2;
 }
 
 .main-content {

@@ -1,0 +1,31 @@
+# 生产环境配置
+# 注意：生产环境请务必修改 JWT_SECRET 和数据库密码
+server:
+  host: 0.0.0.0
+  port: 8080
+
+db:
+  host: mysql
+  port: 3306
+  user: blog
+  password: ${DB_PASSWORD}
+  database: blog
+  charset: utf8mb4
+
+redis:
+  host: redis
+  port: 6379
+  db: 0
+
+jwt:
+  secret: ${JWT_SECRET}
+  expire_hour: 24
+
+app:
+  upload_path: uploads
+  max_upload_size: 10
+
+rate_limit:
+  enabled: true
+  requests: 100
+  window_sec: 60

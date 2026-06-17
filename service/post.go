@@ -64,6 +64,11 @@ func (s *PostService) Create(authorID uint, req model.CreatePostRequest) (*model
 		return nil, err
 	}
 
+	// 同步 Meilisearch 索引
+	if post.Status == model.PostStatusPublished {
+		go IndexPost(&post)
+	}
+
 	ClearHotPostsCache()
 	// 作者当然可以看自己的文章
 	return s.GetByID(post.ID, post.AuthorID, false)
@@ -89,8 +94,20 @@ func (s *PostService) List(query model.PostQuery, currentUserID uint, isAdmin bo
 		}
 	}
 
-	// 关键词搜索：标题或内容
+	// 关键词搜索：优先使用 Meilisearch，失败时降级为 MySQL LIKE
 	if query.Keyword != "" {
+		if SearchClient != nil {
+			searchPosts, total, err := SearchPosts(query.Keyword, query.Page, query.PageSize)
+			if err == nil {
+				return &model.ListResponse{
+					Total: total,
+					Page:  query.Page,
+					Size:  query.PageSize,
+					Data:  searchPosts,
+				}, nil
+			}
+			// Meilisearch 失败时继续走 MySQL
+		}
 		keyword := "%" + query.Keyword + "%"
 		db = db.Where("title LIKE ? OR content LIKE ?", keyword, keyword)
 	}
@@ -167,12 +184,20 @@ func (s *PostService) GetByID(id uint, currentUserID uint, isAdmin bool) (*model
 
 	// 填充点赞数
 	post.LikeCount = NewLikeService().BatchGetLikeCounts([]uint{id})[id]
+
+	// 合并 Redis 未同步的浏览量增量
+	viewCount, err := GetPostViewCount(id)
+	if err == nil {
+		post.ViewCount = viewCount
+	}
+
 	return &post, nil
 }
 
-// IncrementViewCount 增加浏览量
+// IncrementViewCount 增加文章浏览量。
+// 实际逻辑委托给 viewcount.go，优先写入 Redis，Redis 不可用时直接写 MySQL。
 func (s *PostService) IncrementViewCount(id uint) error {
-	return database.DB.Model(&model.Post{}).Where("id = ?", id).UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error
+	return IncrementPostViewCount(id)
 }
 
 // Update 更新文章。管理员可修改任意文章，普通用户只能修改自己的文章。
@@ -234,6 +259,13 @@ func (s *PostService) Update(id, currentUserID uint, isAdmin bool, req model.Upd
 		return nil, err
 	}
 
+	// 同步 Meilisearch 索引
+	if post.Status == model.PostStatusPublished {
+		go IndexPost(&post)
+	} else {
+		go DeletePostIndex(post.ID)
+	}
+
 	ClearHotPostsCache()
 	ClearPostCache(id)
 	// 更新者可以查看返回结果
@@ -253,6 +285,9 @@ func (s *PostService) Delete(id, currentUserID uint, isAdmin bool) error {
 	if err := database.DB.Delete(&post).Error; err != nil {
 		return err
 	}
+
+	// 从 Meilisearch 删除索引
+	go DeletePostIndex(id)
 
 	ClearHotPostsCache()
 	ClearPostCache(id)

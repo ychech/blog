@@ -104,6 +104,8 @@ func (h *PostHandler) Get(c *gin.Context) {
 
 	// 先尝试缓存（缓存只存已发布且无需鉴权的文章）
 	if post, ok := service.GetPostCache(uint(id)); ok {
+		// 即使命中缓存，也要异步增加浏览量，并刷新缓存中的 view_count
+		go h.refreshViewCountAndCache(uint(id), post)
 		utils.Success(c, post)
 		return
 	}
@@ -115,7 +117,11 @@ func (h *PostHandler) Get(c *gin.Context) {
 	}
 
 	// 异步增加浏览量
-	go h.service.IncrementViewCount(uint(id))
+	go func() {
+		if err := h.service.IncrementViewCount(uint(id)); err != nil {
+			utils.Logger.Errorf("增加文章浏览量失败: %v", err)
+		}
+	}()
 
 	// 仅已发布文章写入缓存
 	if post.Status == model.PostStatusPublished {
@@ -123,6 +129,19 @@ func (h *PostHandler) Get(c *gin.Context) {
 	}
 
 	utils.Success(c, post)
+}
+
+// refreshViewCountAndCache 增加浏览量并刷新缓存中的 view_count。
+// 用于缓存命中时避免返回过时的浏览量。
+func (h *PostHandler) refreshViewCountAndCache(postID uint, post *model.Post) {
+	if err := h.service.IncrementViewCount(postID); err != nil {
+		utils.Logger.Errorf("增加文章浏览量失败: %v", err)
+	}
+	viewCount, err := service.GetPostViewCount(postID)
+	if err == nil {
+		post.ViewCount = viewCount
+		service.SetPostCache(post)
+	}
 }
 
 // Update 更新文章（需要登录；管理员可修改任意文章，普通用户只能修改自己的文章）

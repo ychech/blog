@@ -9,6 +9,12 @@ db:
   password: "123456"
   database: blog
   charset: utf8mb4
+  # 只读从库配置（可选），配置后读请求自动路由到从库
+  # replicas:
+  #   - host: 127.0.0.1
+  #     port: 3307
+  #     user: root
+  #     password: "123456"
 
 redis:
   host: 127.0.0.1
@@ -25,7 +31,38 @@ app:
   max_upload_size: 10
 
 # 接口限流配置（基于客户端 IP 的固定窗口限流）
+# mode: memory（单实例内存限流）或 redis（分布式 Redis 限流）
 rate_limit:
   enabled: true
+  mode: memory
   requests: 100
   window_sec: 60
+
+# SMTP 邮件配置（用于发送邮箱验证码）
+email:
+  host: smtp.example.com
+  port: 587
+  username: noreply@example.com
+  password: your-email-password
+  from: 博客 <noreply@example.com>
+  enable_ssl: true
+
+# 邮箱验证配置
+email_verification:
+  enabled: false          # 是否启用邮箱验证
+  required: false         # 是否必须验证后才能登录
+  code_ttl_min: 30        # 验证码有效期（分钟）
+
+# 链路追踪配置（OpenTelemetry + OTLP，兼容 Jaeger/Tempo）
+tracing:
+  enabled: false                              # 是否启用链路追踪
+  endpoint: http://localhost:4318/v1/traces  # OTLP HTTP 接收端
+  sample_rate: 1.0                           # 采样率 0.0-1.0
+  service_name: blog                         # 服务名称
+
+# Meilisearch 搜索配置（可选）
+meilisearch:
+  enabled: false                      # 是否启用 Meilisearch
+  host: http://localhost:7700        # Meilisearch 服务地址
+  api_key: ""                         # Meilisearch API Key
+  index: posts                        # 索引名称

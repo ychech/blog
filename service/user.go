@@ -3,6 +3,7 @@
 package service
 
 import (
+	"blog/config"
 	"blog/database"
 	"blog/model"
 	"blog/utils"
@@ -44,6 +45,15 @@ func (s *UserService) Register(req model.RegisterRequest) (*model.LoginResponse,
 		return nil, err
 	}
 
+	// 如果启用了邮箱验证且提供了邮箱，异步发送验证邮件
+	if config.C.EmailVerification.Enabled && req.Email != "" {
+		go func() {
+			if err := SendVerificationEmail(user.ID, user.Email); err != nil {
+				utils.Logger.Errorf("发送验证邮件失败: %v", err)
+			}
+		}()
+	}
+
 	return s.generateLoginResponse(&user)
 }
 
@@ -56,6 +66,11 @@ func (s *UserService) Login(req model.LoginRequest) (*model.LoginResponse, error
 
 	if !utils.CheckPassword(req.Password, user.Password) {
 		return nil, errors.New("用户不存在或密码错误")
+	}
+
+	// 如果配置要求必须验证邮箱，则未验证用户禁止登录
+	if config.C.EmailVerification.Enabled && config.C.EmailVerification.Required && !user.EmailVerified {
+		return nil, errors.New("邮箱未验证，请先验证邮箱后再登录")
 	}
 
 	return s.generateLoginResponse(&user)

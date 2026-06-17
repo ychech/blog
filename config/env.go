@@ -109,6 +109,25 @@ func applyEnvMap(cfg *Config, vars map[string]string) {
 	if v, ok := getEnv(vars, "DB_CHARSET"); ok && v != "" {
 		cfg.DB.Charset = v
 	}
+	// 简单支持一个只读从库：BLOG_DB_REPLICA_HOST
+	if v, ok := getEnv(vars, "DB_REPLICA_HOST"); ok && v != "" {
+		replica := DBReplicaConfig{
+			Host:     v,
+			Port:     cfg.DB.Port,
+			User:     cfg.DB.User,
+			Password: cfg.DB.Password,
+		}
+		if rv, ok := getEnv(vars, "DB_REPLICA_PORT"); ok && rv != "" {
+			replica.Port = rv
+		}
+		if rv, ok := getEnv(vars, "DB_REPLICA_USER"); ok && rv != "" {
+			replica.User = rv
+		}
+		if rv, ok := getEnv(vars, "DB_REPLICA_PASSWORD"); ok {
+			replica.Password = rv
+		}
+		cfg.DB.Replicas = []DBReplicaConfig{replica}
+	}
 
 	// Redis 配置
 	if v, ok := getEnv(vars, "REDIS_HOST"); ok && v != "" {
@@ -144,11 +163,76 @@ func applyEnvMap(cfg *Config, vars map[string]string) {
 	if v, ok := getEnv(vars, "RATE_LIMIT_ENABLED"); ok && v != "" {
 		cfg.RateLimit.Enabled = parseBool(v, cfg.RateLimit.Enabled)
 	}
+	if v, ok := getEnv(vars, "RATE_LIMIT_MODE"); ok && v != "" {
+		cfg.RateLimit.Mode = v
+	}
 	if v, ok := getEnv(vars, "RATE_LIMIT_REQUESTS"); ok && v != "" {
 		cfg.RateLimit.Requests = parseInt(v, cfg.RateLimit.Requests)
 	}
 	if v, ok := getEnv(vars, "RATE_LIMIT_WINDOW_SEC"); ok && v != "" {
 		cfg.RateLimit.WindowSec = parseInt(v, cfg.RateLimit.WindowSec)
+	}
+
+	// Email 配置
+	if v, ok := getEnv(vars, "EMAIL_HOST"); ok && v != "" {
+		cfg.Email.Host = v
+	}
+	if v, ok := getEnv(vars, "EMAIL_PORT"); ok && v != "" {
+		cfg.Email.Port = parseInt(v, cfg.Email.Port)
+	}
+	if v, ok := getEnv(vars, "EMAIL_USERNAME"); ok && v != "" {
+		cfg.Email.Username = v
+	}
+	if v, ok := getEnv(vars, "EMAIL_PASSWORD"); ok {
+		cfg.Email.Password = v
+	}
+	if v, ok := getEnv(vars, "EMAIL_FROM"); ok && v != "" {
+		cfg.Email.From = v
+	}
+	if v, ok := getEnv(vars, "EMAIL_ENABLE_SSL"); ok && v != "" {
+		cfg.Email.EnableSSL = parseBool(v, cfg.Email.EnableSSL)
+	}
+
+	// EmailVerification 配置
+	if v, ok := getEnv(vars, "EMAIL_VERIFICATION_ENABLED"); ok && v != "" {
+		cfg.EmailVerification.Enabled = parseBool(v, cfg.EmailVerification.Enabled)
+	}
+	if v, ok := getEnv(vars, "EMAIL_VERIFICATION_REQUIRED"); ok && v != "" {
+		cfg.EmailVerification.Required = parseBool(v, cfg.EmailVerification.Required)
+	}
+	if v, ok := getEnv(vars, "EMAIL_VERIFICATION_CODE_TTL_MIN"); ok && v != "" {
+		cfg.EmailVerification.CodeTTLMin = parseInt(v, cfg.EmailVerification.CodeTTLMin)
+	}
+
+	// Tracing 配置
+	if v, ok := getEnv(vars, "TRACING_ENABLED"); ok && v != "" {
+		cfg.Tracing.Enabled = parseBool(v, cfg.Tracing.Enabled)
+	}
+	if v, ok := getEnv(vars, "TRACING_ENDPOINT"); ok && v != "" {
+		cfg.Tracing.Endpoint = v
+	}
+	if v, ok := getEnv(vars, "TRACING_SAMPLE_RATE"); ok && v != "" {
+		var rate float64
+		if _, err := fmt.Sscanf(v, "%f", &rate); err == nil {
+			cfg.Tracing.SampleRate = rate
+		}
+	}
+	if v, ok := getEnv(vars, "TRACING_SERVICE_NAME"); ok && v != "" {
+		cfg.Tracing.ServiceName = v
+	}
+
+	// Meilisearch 配置
+	if v, ok := getEnv(vars, "MEILISEARCH_ENABLED"); ok && v != "" {
+		cfg.Meilisearch.Enabled = parseBool(v, cfg.Meilisearch.Enabled)
+	}
+	if v, ok := getEnv(vars, "MEILISEARCH_HOST"); ok && v != "" {
+		cfg.Meilisearch.Host = v
+	}
+	if v, ok := getEnv(vars, "MEILISEARCH_API_KEY"); ok {
+		cfg.Meilisearch.APIKey = v
+	}
+	if v, ok := getEnv(vars, "MEILISEARCH_INDEX"); ok && v != "" {
+		cfg.Meilisearch.Index = v
 	}
 }
 

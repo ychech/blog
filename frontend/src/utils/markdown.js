@@ -27,6 +27,19 @@ hljs.registerLanguage('css', css)
 hljs.registerLanguage('sql', sql)
 hljs.registerLanguage('yaml', yaml)
 
+/**
+ * 将标题文本转换为 URL 友好的锚点 ID
+ * 支持中文、英文、数字，其他字符替换为 -
+ * @param {string} text
+ * @returns {string}
+ */
+const slugify = (text) => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 // 配置 markdown-it：启用自动链接、排版增强，但禁用原始 HTML 防止 XSS
 // 代码块使用 highlight.js 进行语法高亮
 const md = new MarkdownIt({
@@ -46,6 +59,17 @@ const md = new MarkdownIt({
   }
 })
 
+// 自定义标题渲染：为每个 h1-h6 添加 id 锚点，便于目录跳转
+md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  const inlineToken = tokens[idx + 1]
+  if (inlineToken && inlineToken.type === 'inline') {
+    const id = slugify(inlineToken.content)
+    token.attrSet('id', id)
+  }
+  return self.renderToken(tokens, idx, options)
+}
+
 /**
  * 渲染 Markdown 为 HTML
  * @param {string} text
@@ -54,6 +78,29 @@ const md = new MarkdownIt({
 export const renderMarkdown = (text) => {
   if (!text) return ''
   return md.render(text)
+}
+
+/**
+ * 根据 Markdown 内容生成目录（Table of Contents）
+ * @param {string} text
+ * @returns {Array<{level: number, title: string, id: string}>}
+ */
+export const generateTOC = (text) => {
+  if (!text) return []
+  const tokens = md.parse(text, {})
+  const toc = []
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    if (token.type === 'heading_open') {
+      const level = parseInt(token.tag.slice(1))
+      const inlineToken = tokens[i + 1]
+      if (inlineToken && inlineToken.type === 'inline') {
+        const title = inlineToken.content
+        toc.push({ level, title, id: slugify(title) })
+      }
+    }
+  }
+  return toc
 }
 
 /**

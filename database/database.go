@@ -6,6 +6,7 @@ import (
 	"blog/config"
 	"blog/model"
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/dbresolver"
 )
 
 // DB 全局 MySQL 连接（GORM）
@@ -48,7 +50,49 @@ func initMySQL() error {
 	DB = db
 	log.Println("MySQL 连接成功")
 
+	// 配置读写分离：如果配置了从库，则读请求路由到从库
+	if len(cfg.Replicas) > 0 {
+		replicas := make([]gorm.Dialector, 0, len(cfg.Replicas))
+		for _, r := range cfg.Replicas {
+			dsn := replicaDSN(r, cfg)
+			replicas = append(replicas, mysql.Open(dsn))
+			log.Printf("MySQL 只读从库: %s:%s", r.Host, r.Port)
+		}
+
+		resolver := dbresolver.Register(dbresolver.Config{
+			Replicas: replicas,
+			Policy:   dbresolver.RandomPolicy{},
+		})
+		if err := db.Use(resolver); err != nil {
+			return fmt.Errorf("配置读写分离失败: %w", err)
+		}
+		log.Println("MySQL 读写分离已启用")
+	}
+
 	return migrate()
+}
+
+// replicaDSN 根据从库配置和主库配置生成 DSN。
+// 从库配置中未指定的字段（端口、用户名、密码、数据库名、字符集）继承自主库。
+func replicaDSN(r config.DBReplicaConfig, master config.DBConfig) string {
+	host := r.Host
+	port := r.Port
+	user := r.User
+	password := r.Password
+
+	if port == "" {
+		port = master.Port
+	}
+	if user == "" {
+		user = master.User
+	}
+	if password == "" {
+		password = master.Password
+	}
+
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local",
+		user, password, host, port, master.Database, master.Charset,
+	)
 }
 
 // initRedis 初始化 Redis 连接，使用 3 秒超时进行 Ping 探测。
@@ -85,6 +129,8 @@ func migrate() error {
 		&model.CommentLike{},
 		&model.Badge{},
 		&model.UserBadge{},
+		&model.Notification{},
+		&model.AuditLog{},
 	)
 }
 

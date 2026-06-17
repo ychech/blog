@@ -45,6 +45,16 @@ func (s *CommentService) Create(authorID uint, authorName string, req model.Crea
 		return nil, err
 	}
 
+	// 如果回复了他人评论，异步发送通知给父评论作者
+	if req.ParentID != nil {
+		var parent model.Comment
+		if err := database.DB.First(&parent, *req.ParentID).Error; err == nil {
+			if parent.AuthorID != authorID {
+				go CreateCommentReplyNotification(parent.AuthorID, comment.ID, authorName, post.Title)
+			}
+		}
+	}
+
 	return &comment, nil
 }
 

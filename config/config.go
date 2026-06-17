@@ -36,12 +36,16 @@ var C *Config
 // Config 聚合应用运行所需的全部配置项。
 // 使用 yaml tag 支持 YAML 反序列化，使用 json tag 便于日志输出时序列化。
 type Config struct {
-	Server    ServerConfig    `yaml:"server" json:"server"`       // HTTP 服务监听配置
-	DB        DBConfig        `yaml:"db" json:"db"`               // 数据库连接配置
-	Redis     RedisConfig     `yaml:"redis" json:"redis"`         // Redis 连接配置
-	JWT       JWTConfig       `yaml:"jwt" json:"jwt"`             // JWT 签名与过期配置
-	App       AppConfig       `yaml:"app" json:"app"`             // 应用级配置（上传、静态资源等）
-	RateLimit RateLimitConfig `yaml:"rate_limit" json:"rate_limit"` // 接口限流配置
+	Server           ServerConfig           `yaml:"server" json:"server"`                     // HTTP 服务监听配置
+	DB               DBConfig               `yaml:"db" json:"db"`                             // 数据库连接配置
+	Redis            RedisConfig            `yaml:"redis" json:"redis"`                       // Redis 连接配置
+	JWT              JWTConfig              `yaml:"jwt" json:"jwt"`                           // JWT 签名与过期配置
+	App              AppConfig              `yaml:"app" json:"app"`                           // 应用级配置（上传、静态资源等）
+	RateLimit        RateLimitConfig        `yaml:"rate_limit" json:"rate_limit"`             // 接口限流配置
+	Email            EmailConfig            `yaml:"email" json:"email"`                       // SMTP 邮件配置
+	EmailVerification EmailVerificationConfig `yaml:"email_verification" json:"email_verification"` // 邮箱验证配置
+	Tracing           TracingConfig          `yaml:"tracing" json:"tracing"`                                // 链路追踪配置
+	Meilisearch       MeilisearchConfig      `yaml:"meilisearch" json:"meilisearch"`                        // Meilisearch 搜索配置
 }
 
 // ServerConfig 定义 HTTP 服务的监听地址。
@@ -52,12 +56,21 @@ type ServerConfig struct {
 
 // DBConfig 定义 MySQL 数据库连接参数。
 type DBConfig struct {
-	Host     string `yaml:"host" json:"host"`         // 数据库主机地址
-	Port     string `yaml:"port" json:"port"`         // 数据库端口
-	User     string `yaml:"user" json:"user"`         // 数据库用户名
-	Password string `yaml:"password" json:"password"` // 数据库密码
-	Database string `yaml:"database" json:"database"` // 数据库名
-	Charset  string `yaml:"charset" json:"charset"`   // 连接字符集
+	Host     string            `yaml:"host" json:"host"`         // 数据库主机地址（主库）
+	Port     string            `yaml:"port" json:"port"`         // 数据库端口
+	User     string            `yaml:"user" json:"user"`         // 数据库用户名
+	Password string            `yaml:"password" json:"password"` // 数据库密码
+	Database string            `yaml:"database" json:"database"` // 数据库名
+	Charset  string            `yaml:"charset" json:"charset"`   // 连接字符集
+	Replicas []DBReplicaConfig `yaml:"replicas" json:"replicas"` // 只读从库配置列表
+}
+
+// DBReplicaConfig 定义只读从库连接参数。
+type DBReplicaConfig struct {
+	Host     string `yaml:"host" json:"host"`         // 从库主机地址
+	Port     string `yaml:"port" json:"port"`         // 从库端口
+	User     string `yaml:"user" json:"user"`         // 从库用户名
+	Password string `yaml:"password" json:"password"` // 从库密码
 }
 
 // RedisConfig 定义 Redis 连接参数。
@@ -83,9 +96,43 @@ type AppConfig struct {
 // RateLimitConfig 定义接口限流配置。
 // 基于客户端 IP 进行固定窗口计数，超过阈值后返回 429 Too Many Requests。
 type RateLimitConfig struct {
-	Enabled   bool `yaml:"enabled" json:"enabled"`     // 是否启用限流
-	Requests  int  `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
-	WindowSec int  `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
+	Enabled   bool   `yaml:"enabled" json:"enabled"`     // 是否启用限流
+	Mode      string `yaml:"mode" json:"mode"`           // 限流模式：memory（内存）或 redis（分布式）
+	Requests  int    `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
+	WindowSec int    `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
+}
+
+// EmailConfig 定义 SMTP 邮件发送配置。
+type EmailConfig struct {
+	Host       string `yaml:"host" json:"host"`             // SMTP 服务器地址
+	Port       int    `yaml:"port" json:"port"`             // SMTP 端口
+	Username   string `yaml:"username" json:"username"`     // 发件邮箱
+	Password   string `yaml:"password" json:"password"`     // 邮箱密码或授权码
+	From       string `yaml:"from" json:"from"`             // 发件人显示名称
+	EnableSSL  bool   `yaml:"enable_ssl" json:"enable_ssl"` // 是否启用 SSL
+}
+
+// EmailVerificationConfig 定义邮箱验证配置。
+type EmailVerificationConfig struct {
+	Enabled     bool `yaml:"enabled" json:"enabled"`         // 是否启用邮箱验证
+	Required    bool `yaml:"required" json:"required"`       // 是否必须验证后才能登录
+	CodeTTLMin  int  `yaml:"code_ttl_min" json:"code_ttl_min"` // 验证码有效期（分钟）
+}
+
+// TracingConfig 定义链路追踪配置。
+type TracingConfig struct {
+	Enabled     bool    `yaml:"enabled" json:"enabled"`           // 是否启用链路追踪
+	Endpoint    string  `yaml:"endpoint" json:"endpoint"`         // OTLP 接收端地址，如 http://localhost:4318/v1/traces
+	SampleRate  float64 `yaml:"sample_rate" json:"sample_rate"`   // 采样率，0.0-1.0
+	ServiceName string  `yaml:"service_name" json:"service_name"` // 服务名称
+}
+
+// MeilisearchConfig 定义 Meilisearch 搜索引擎配置。
+type MeilisearchConfig struct {
+	Enabled bool   `yaml:"enabled" json:"enabled"` // 是否启用 Meilisearch
+	Host    string `yaml:"host" json:"host"`       // Meilisearch 服务地址
+	APIKey  string `yaml:"api_key" json:"api_key"` // Meilisearch API Key
+	Index   string `yaml:"index" json:"index"`     // 索引名称
 }
 
 // 默认配置常量。
@@ -113,8 +160,25 @@ const (
 	DefaultMaxUploadSize = 10
 
 	DefaultRateLimitEnabled   = true
+	DefaultRateLimitMode      = "memory"
 	DefaultRateLimitRequests  = 100
 	DefaultRateLimitWindowSec = 60
+
+	DefaultEmailPort        = 587
+	DefaultEmailEnableSSL   = true
+
+	DefaultEmailVerificationEnabled    = false
+	DefaultEmailVerificationRequired   = false
+	DefaultEmailVerificationCodeTTLMin = 30
+
+	DefaultTracingEnabled     = false
+	DefaultTracingEndpoint    = "http://localhost:4318/v1/traces"
+	DefaultTracingSampleRate  = 1.0
+	DefaultTracingServiceName = "blog"
+
+	DefaultMeilisearchEnabled = false
+	DefaultMeilisearchHost    = "http://localhost:7700"
+	DefaultMeilisearchIndex   = "posts"
 )
 
 // LoadOptions 是配置加载的可选参数，
@@ -156,10 +220,37 @@ func defaultConfig() *Config {
 		},
 		RateLimit: RateLimitConfig{
 			Enabled:   DefaultRateLimitEnabled,
+			Mode:      DefaultRateLimitMode,
 			Requests:  DefaultRateLimitRequests,
 			WindowSec: DefaultRateLimitWindowSec,
 		},
+		Email: EmailConfig{
+			Port:      DefaultEmailPort,
+			EnableSSL: DefaultEmailEnableSSL,
+		},
+		EmailVerification: EmailVerificationConfig{
+			Enabled:    DefaultEmailVerificationEnabled,
+			Required:   DefaultEmailVerificationRequired,
+			CodeTTLMin: DefaultEmailVerificationCodeTTLMin,
+		},
+		Tracing: TracingConfig{
+			Enabled:     DefaultTracingEnabled,
+			Endpoint:    DefaultTracingEndpoint,
+			SampleRate:  DefaultTracingSampleRate,
+			ServiceName: DefaultTracingServiceName,
+		},
+		Meilisearch: MeilisearchConfig{
+			Enabled: DefaultMeilisearchEnabled,
+			Host:    DefaultMeilisearchHost,
+			Index:   DefaultMeilisearchIndex,
+		},
 	}
+}
+
+// DefaultConfig 返回默认配置实例。
+// 主要用于测试场景，或在不需要从文件/环境变量加载时使用。
+func DefaultConfig() *Config {
+	return defaultConfig()
 }
 
 // Load 是程序启动时的标准配置加载入口。

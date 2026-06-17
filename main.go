@@ -30,6 +30,7 @@ import (
 	"blog/config"
 	"blog/database"
 	"blog/router"
+	"blog/service"
 	"blog/utils"
 	"context"
 	"log"
@@ -42,20 +43,49 @@ import (
 
 func main() {
 	// 加载配置：失败则直接退出
-	config.Load()
+	// 使用 Viper 支持多环境配置文件（config.dev.yaml / config.prod.yaml）
+	cfg, err := config.LoadWithViper(config.LoadOptions{
+		EnvFile: ".env",
+	})
+	if err != nil {
+		log.Fatalf("配置加载失败: %v", err)
+	}
+	config.C = cfg
 
 	// 初始化 zap 日志：开发环境彩色输出，并记录调用位置
 	if err := utils.InitLogger(); err != nil {
 		log.Fatalf("日志初始化失败: %v", err)
 	}
 
+	// 初始化 OpenTelemetry 链路追踪
+	shutdownTracing, err := utils.InitTracing(config.C.Tracing)
+	if err != nil {
+		utils.Logger.Fatalf("链路追踪初始化失败: %v", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracing(ctx); err != nil {
+			utils.Logger.Errorf("链路追踪关闭失败: %v", err)
+		}
+	}()
+
 	// 初始化 MySQL 与 Redis；Redis 失败只会降级缓存，不会阻断启动
 	if err := database.Init(); err != nil {
 		utils.Logger.Fatalf("数据库初始化失败: %v", err)
 	}
 
+	// 初始化 Meilisearch 搜索引擎；失败仅记录日志，不影响主服务启动
+	if err := service.InitSearch(config.C.Meilisearch); err != nil {
+		utils.Logger.Warnf("Meilisearch 初始化失败（非致命）: %v", err)
+	}
+
 	// 注册路由并获取 Gin 引擎实例
 	r := router.Setup()
+
+	// 启动后台任务：文章浏览量 Redis -> MySQL 定时同步
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	stopViewCountSync := service.StartViewCountSync(bgCtx)
 
 	addr := config.C.Server.ListenAddr()
 	srv := &http.Server{
@@ -78,6 +108,10 @@ func main() {
 	<-quit
 
 	utils.Logger.Info("服务正在关闭，等待正在处理的请求完成...")
+
+	// 取消后台任务，触发最后一次浏览量同步，并等待同步完成
+	bgCancel()
+	stopViewCountSync()
 
 	// 设置 5 秒超时，强制关闭未完成的请求
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

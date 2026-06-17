@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { postApi, commentApi, likeApi } from '@/api'
 import { useUserStore } from '@/stores/user'
-import { renderMarkdown } from '@/utils/markdown'
+import { renderMarkdown, generateTOC } from '@/utils/markdown'
 import CommentList from '@/components/CommentList.vue'
 
 const props = defineProps({
@@ -84,6 +84,17 @@ const renderedContent = computed(() => {
   return renderMarkdown(post.value?.content || '')
 })
 
+const toc = computed(() => {
+  return generateTOC(post.value?.content || '')
+})
+
+const scrollToHeading = (id) => {
+  const el = document.getElementById(id)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleString('zh-CN')
@@ -100,6 +111,20 @@ onMounted(() => {
   <div class="post-detail">
     <div v-if="loading" class="empty-tip card">加载中...</div>
     <template v-else-if="post">
+      <aside v-if="toc.length > 0" class="toc-sidebar card">
+        <h3 class="toc-title">目录</h3>
+        <ul class="toc-list">
+          <li
+            v-for="item in toc"
+            :key="item.id"
+            :class="['toc-item', `toc-level-${item.level}`]"
+            @click="scrollToHeading(item.id)"
+          >
+            {{ item.title }}
+          </li>
+        </ul>
+      </aside>
+
       <article class="card">
         <h1 class="post-title">{{ post.title }}</h1>
         <div class="post-meta">
@@ -141,6 +166,69 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.post-detail {
+  position: relative;
+}
+
+.toc-sidebar {
+  position: fixed;
+  right: 20px;
+  top: 100px;
+  width: 220px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  padding: 16px;
+  z-index: 10;
+}
+
+.toc-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #2c3e50;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-item {
+  padding: 6px 0;
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1.4;
+  border-bottom: none;
+}
+
+.toc-item:hover {
+  color: #3498db;
+}
+
+.toc-level-1 {
+  font-weight: 600;
+}
+
+.toc-level-2 {
+  padding-left: 12px;
+}
+
+.toc-level-3,
+.toc-level-4,
+.toc-level-5,
+.toc-level-6 {
+  padding-left: 24px;
+  font-size: 13px;
+}
+
+@media (max-width: 1200px) {
+  .toc-sidebar {
+    display: none;
+  }
+}
+
 .post-title {
   font-size: 28px;
   color: #2c3e50;

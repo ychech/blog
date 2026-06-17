@@ -19,16 +19,17 @@ const (
 // User 用户模型，对应 users 表。
 // Password 字段使用 json:"-"，避免在接口响应中泄露密码哈希。
 type User struct {
-	ID        uint           `json:"id" gorm:"primaryKey"`
-	Username  string         `json:"username" gorm:"size:50;not null;uniqueIndex"`
-	Password  string         `json:"-" gorm:"size:255;not null"` // json:"-" 表示不序列化到 JSON
-	Nickname  string         `json:"nickname" gorm:"size:100"`
-	Email     string         `json:"email" gorm:"size:100"`
-	Avatar    string         `json:"avatar" gorm:"size:255"`
-	Role      UserRole       `json:"role" gorm:"size:20;default:user"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	ID             uint           `json:"id" gorm:"primaryKey"`
+	Username       string         `json:"username" gorm:"size:50;not null;uniqueIndex"`
+	Password       string         `json:"-" gorm:"size:255;not null"` // json:"-" 表示不序列化到 JSON
+	Nickname       string         `json:"nickname" gorm:"size:100"`
+	Email          string         `json:"email" gorm:"size:100"`
+	EmailVerified  bool           `json:"email_verified" gorm:"default:false"`
+	Avatar         string         `json:"avatar" gorm:"size:255"`
+	Role           UserRole       `json:"role" gorm:"size:20;default:user"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // Category 文章分类，对应 categories 表。
@@ -118,6 +119,42 @@ type UserBadge struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// NotificationType 定义通知类型。
+type NotificationType string
+
+const (
+	// NotificationTypeCommentReply 评论回复通知。
+	NotificationTypeCommentReply NotificationType = "comment_reply"
+)
+
+// Notification 通知模型，对应 notifications 表。
+// 用于存储用户收到的系统通知，例如评论回复、勋章颁发等。
+type Notification struct {
+	ID        uint             `json:"id" gorm:"primaryKey"`
+	UserID    uint             `json:"user_id" gorm:"not null;index"`      // 接收通知的用户
+	Type      NotificationType `json:"type" gorm:"size:50;not null"`       // 通知类型
+	Title     string           `json:"title" gorm:"size:200;not null"`     // 通知标题
+	Content   string           `json:"content" gorm:"type:text"`           // 通知内容
+	RelatedID uint             `json:"related_id" gorm:"index"`            // 关联业务 ID（如评论 ID）
+	IsRead    bool             `json:"is_read" gorm:"default:false;index"` // 是否已读
+	CreatedAt time.Time        `json:"created_at"`
+	UpdatedAt time.Time        `json:"updated_at"`
+}
+
+// AuditLog 操作审计日志模型，对应 audit_logs 表。
+// 用于记录管理员的关键操作，便于合规审计和问题追溯。
+type AuditLog struct {
+	ID         uint      `json:"id" gorm:"primaryKey"`
+	UserID     uint      `json:"user_id" gorm:"not null;index"`  // 操作用户 ID
+	Username   string    `json:"username" gorm:"size:50"`        // 操作用户名
+	Action     string    `json:"action" gorm:"size:50;not null"` // 操作类型：CREATE/UPDATE/DELETE/LOGIN
+	Resource   string    `json:"resource" gorm:"size:50"`        // 操作对象：post/user/badge/...
+	ResourceID uint      `json:"resource_id" gorm:"index"`       // 操作对象 ID
+	Details    string    `json:"details" gorm:"type:text"`       // 操作详情（JSON 或描述）
+	IP         string    `json:"ip" gorm:"size:50"`              // 操作者 IP
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 // CreateBadgeRequest 创建勋章请求
 type CreateBadgeRequest struct {
 	Name            string `json:"name" binding:"required"`
@@ -185,6 +222,11 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+// VerifyEmailRequest 邮箱验证码验证请求
+type VerifyEmailRequest struct {
+	Code string `json:"code" binding:"required"`
 }
 
 // UpdateProfileRequest 更新用户资料请求

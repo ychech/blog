@@ -24,14 +24,17 @@ func Setup() *gin.Engine {
 	// gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// 全局中间件：恢复 panic -> 记录请求日志 -> Prometheus 指标 -> 处理跨域 -> 接口限流
+	// 全局中间件：恢复 panic -> 链路追踪 -> 记录请求日志 -> Prometheus 指标 -> 处理跨域 -> 接口限流 -> 审计日志
 	// 注意顺序：Recovery 放在最前面，可以捕获后续中间件中的 panic；
-	// RateLimit 放在最后，对请求频率进行全局控制。
+	// Tracing 紧随其后，确保请求进入追踪范围；RateLimit 放在最后，对请求频率进行全局控制；
+	// AuditLog 调用 c.Next() 后再记录，因此能获取到 JWTAuth 设置的用户上下文。
 	r.Use(middleware.Recovery())
+	r.Use(middleware.Tracing())
 	r.Use(middleware.Logger())
 	r.Use(middleware.PrometheusMetrics())
 	r.Use(middleware.Cors())
 	r.Use(middleware.RateLimit())
+	r.Use(middleware.AuditLog())
 
 	// 静态文件服务：上传的图片可通过 http://host/uploads/xxx.png 直接访问
 	cfg := config.C.App
@@ -56,6 +59,8 @@ func Setup() *gin.Engine {
 	likeHandler := handler.NewLikeHandler()
 	commentLikeHandler := handler.NewCommentLikeHandler()
 	badgeHandler := handler.NewBadgeHandler()
+	adminHandler := handler.NewAdminHandler()
+	notificationHandler := handler.NewNotificationHandler()
 
 	// 认证路由：注册、登录公开；获取/更新当前用户需要登录
 	auth := r.Group("/api/auth")
@@ -64,6 +69,8 @@ func Setup() *gin.Engine {
 		auth.POST("/login", authHandler.Login)
 		auth.GET("/me", middleware.JWTAuth(), authHandler.Me)
 		auth.PUT("/me", middleware.JWTAuth(), authHandler.UpdateProfile)
+		auth.POST("/send-verification-email", middleware.JWTAuth(), authHandler.SendVerificationEmail)
+		auth.POST("/verify-email", middleware.JWTAuth(), authHandler.VerifyEmail)
 		auth.GET("/badges", middleware.JWTAuth(), badgeHandler.GetMyBadges)
 		auth.GET("/users", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminListUsers)
 		auth.GET("/stats", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetStats)
@@ -132,7 +139,15 @@ func Setup() *gin.Engine {
 		admin.DELETE("/badges/:id", badgeHandler.Delete)
 		admin.POST("/badges/award", badgeHandler.Award)
 		admin.DELETE("/user-badges/:id", badgeHandler.Revoke)
+
+		// 审计日志
+		admin.GET("/audit-logs", adminHandler.ListAuditLogs)
 	}
+
+	// 通知路由（需登录）
+	api.GET("/notifications", middleware.JWTAuth(), notificationHandler.List)
+	api.GET("/notifications/unread-count", middleware.JWTAuth(), notificationHandler.CountUnread)
+	api.PUT("/notifications/:id/read", middleware.JWTAuth(), notificationHandler.MarkAsRead)
 
 	// 404 兜底处理：所有未匹配的路由返回统一错误
 	r.NoRoute(func(c *gin.Context) {
