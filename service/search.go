@@ -85,31 +85,24 @@ func DeletePostIndex(postID uint) error {
 	return err
 }
 
-// SearchPosts 使用 Meilisearch 搜索文章。
-// 如果 Meilisearch 不可用，降级为 MySQL LIKE 搜索。
-func SearchPosts(keyword string, page, pageSize int) ([]model.Post, int64, error) {
-	if SearchClient != nil {
-		posts, total, err := searchWithMeilisearch(keyword, page, pageSize)
-		if err == nil {
-			return posts, total, nil
-		}
+// SearchPostIDs 使用 Meilisearch 搜索文章，返回匹配的文章 ID 列表与估算总数。
+// 如果 Meilisearch 不可用，返回错误，由调用方降级到 MySQL LIKE 搜索。
+func SearchPostIDs(keyword string, limit int64) ([]uint, int64, error) {
+	if SearchClient == nil {
+		return nil, 0, fmt.Errorf("Meilisearch 未启用")
 	}
 
-	return searchWithMySQL(keyword, page, pageSize)
-}
-
-func searchWithMeilisearch(keyword string, page, pageSize int) ([]model.Post, int64, error) {
 	cfg := config.C.Meilisearch
 	resp, err := SearchClient.Index(cfg.Index).Search(keyword, &meilisearch.SearchRequest{
-		Limit:  int64(pageSize),
-		Offset: int64((page - 1) * pageSize),
+		Limit:  limit,
+		Offset: 0,
 		Filter: []string{"status = published"},
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var ids []uint
+	ids := make([]uint, 0, len(resp.Hits))
 	for _, hit := range resp.Hits {
 		raw, ok := hit["id"]
 		if !ok {
@@ -122,14 +115,31 @@ func searchWithMeilisearch(keyword string, page, pageSize int) ([]model.Post, in
 		ids = append(ids, id)
 	}
 
-	var posts []model.Post
-	if len(ids) > 0 {
-		if err := database.DB.Where("id IN ?", ids).Find(&posts).Error; err != nil {
-			return nil, 0, err
+	return ids, int64(resp.EstimatedTotalHits), nil
+}
+
+// SearchPosts 使用 Meilisearch 搜索文章。
+// 如果 Meilisearch 不可用，降级为 MySQL LIKE 搜索。
+// 注意：返回的结果未预加载 Author/Category/Tags，也未填充 LikeCount，
+// 建议优先使用 SearchPostIDs 结合数据库查询获取完整数据。
+func SearchPosts(keyword string, page, pageSize int) ([]model.Post, int64, error) {
+	ids, total, err := SearchPostIDs(keyword, int64(pageSize))
+	if err == nil {
+		var posts []model.Post
+		if len(ids) > 0 {
+			if err := database.DB.Where("id IN ?", ids).Find(&posts).Error; err != nil {
+				return nil, 0, err
+			}
 		}
+		return posts, total, nil
 	}
 
-	return posts, int64(resp.EstimatedTotalHits), nil
+	return searchWithMySQL(keyword, page, pageSize)
+}
+
+func searchWithMeilisearch(keyword string, page, pageSize int) ([]model.Post, int64, error) {
+	posts, total, err := SearchPosts(keyword, page, pageSize)
+	return posts, total, err
 }
 
 func searchWithMySQL(keyword string, page, pageSize int) ([]model.Post, int64, error) {

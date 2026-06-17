@@ -4,6 +4,7 @@ import (
 	"blog/database"
 	"blog/model"
 	"fmt"
+	"strings"
 )
 
 // CommentService 评论服务，处理评论创建、文章评论列表查询与删除。
@@ -33,12 +34,20 @@ func (s *CommentService) Create(authorID uint, authorName string, req model.Crea
 		}
 	}
 
+	content := strings.TrimSpace(req.Content)
+	if err := validateNonEmptyTrimmed(content, "评论内容"); err != nil {
+		return nil, err
+	}
+	if err := validateMaxLength(content, "评论内容", 5000); err != nil {
+		return nil, err
+	}
+
 	comment := model.Comment{
 		PostID:     req.PostID,
 		ParentID:   req.ParentID,
 		AuthorID:   authorID,
 		AuthorName: authorName,
-		Content:    req.Content,
+		Content:    content,
 	}
 
 	if err := database.DB.Create(&comment).Error; err != nil {

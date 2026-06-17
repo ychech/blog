@@ -288,6 +288,11 @@ type CreateTagRequest struct {
 	Name string `json:"name" binding:"required"`
 }
 
+// UpdateTagRequest 更新标签请求
+type UpdateTagRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
 // CreateCommentRequest 创建评论请求
 type CreateCommentRequest struct {
 	PostID   uint   `json:"post_id" binding:"required"`

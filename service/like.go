@@ -5,9 +5,9 @@ package service
 import (
 	"blog/database"
 	"blog/model"
-	"errors"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // LikeService 点赞服务
@@ -18,29 +18,30 @@ func NewLikeService() *LikeService {
 	return &LikeService{}
 }
 
-// Toggle 切换点赞状态：已点赞则取消，未点赞则点赞
+// Toggle 切换点赞状态：已点赞则取消，未点赞则点赞。
+// 使用 INSERT ... ON DUPLICATE KEY UPDATE 原子切换，避免并发重复点赞。
 func (s *LikeService) Toggle(postID, userID uint) (bool, error) {
-	var like model.Like
-	err := database.DB.Where("post_id = ? AND user_id = ?", postID, userID).First(&like).Error
-
-	// 已存在则取消点赞（软删除）
-	if err == nil {
-		if err := database.DB.Delete(&like).Error; err != nil {
-			return false, err
+	var liked bool
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		like := model.Like{PostID: postID, UserID: userID}
+		if err := tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "post_id"}, {Name: "user_id"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"deleted_at": gorm.Expr("CASE WHEN deleted_at IS NULL THEN CURRENT_TIMESTAMP ELSE NULL END"),
+				"updated_at": gorm.Expr("CURRENT_TIMESTAMP"),
+			}),
+		}).Create(&like).Error; err != nil {
+			return err
 		}
-		return false, nil
-	}
 
-	// 不存在则新增点赞
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, err
-	}
-
-	like = model.Like{PostID: postID, UserID: userID}
-	if err := database.DB.Create(&like).Error; err != nil {
-		return false, err
-	}
-	return true, nil
+		var final model.Like
+		if err := tx.Unscoped().Where("post_id = ? AND user_id = ?", postID, userID).First(&final).Error; err != nil {
+			return err
+		}
+		liked = !final.DeletedAt.Valid
+		return nil
+	})
+	return liked, err
 }
 
 // IsLiked 检查用户是否已点赞

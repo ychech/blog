@@ -19,6 +19,23 @@ func NewPostService() *PostService {
 
 // Create 创建文章
 func (s *PostService) Create(authorID uint, req model.CreatePostRequest) (*model.Post, error) {
+	// 基础校验
+	title := strings.TrimSpace(req.Title)
+	content := strings.TrimSpace(req.Content)
+	summary := strings.TrimSpace(req.Summary)
+	if err := validateNonEmptyTrimmed(title, "文章标题"); err != nil {
+		return nil, err
+	}
+	if err := validateMaxLength(title, "文章标题", 255); err != nil {
+		return nil, err
+	}
+	if err := validateNonEmptyTrimmed(content, "文章内容"); err != nil {
+		return nil, err
+	}
+	if err := validateMaxLength(summary, "文章摘要", 500); err != nil {
+		return nil, err
+	}
+
 	// 检查分类
 	var category model.Category
 	if err := database.DB.First(&category, req.CategoryID).Error; err != nil {
@@ -31,17 +48,17 @@ func (s *PostService) Create(authorID uint, req model.CreatePostRequest) (*model
 	}
 
 	post := model.Post{
-		Title:      req.Title,
-		Summary:    req.Summary,
-		Content:    req.Content,
+		Title:      title,
+		Summary:    summary,
+		Content:    content,
 		CoverURL:   req.CoverURL,
 		Status:     status,
 		AuthorID:   authorID,
 		CategoryID: &req.CategoryID,
 	}
 
-	if post.Summary == "" && len(post.Content) > 100 {
-		post.Summary = post.Content[:100]
+	if post.Summary == "" && len([]rune(post.Content)) > 100 {
+		post.Summary = string([]rune(post.Content)[:100])
 	}
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
@@ -94,22 +111,25 @@ func (s *PostService) List(query model.PostQuery, currentUserID uint, isAdmin bo
 		}
 	}
 
-	// 关键词搜索：优先使用 Meilisearch，失败时降级为 MySQL LIKE
-	if query.Keyword != "" {
-		if SearchClient != nil {
-			searchPosts, total, err := SearchPosts(query.Keyword, query.Page, query.PageSize)
-			if err == nil {
+	// 关键词搜索：优先使用 Meilisearch，失败时降级为 MySQL LIKE。
+	// Meilisearch 只负责召回候选 ID，真正的状态/分类/标签过滤仍由数据库完成，
+	// 避免搜索路径绕过原有筛选条件。
+	if keyword := strings.TrimSpace(query.Keyword); keyword != "" {
+		if ids, _, err := SearchPostIDs(keyword, 1000); err == nil {
+			if len(ids) == 0 {
 				return &model.ListResponse{
-					Total: total,
+					Total: 0,
 					Page:  query.Page,
 					Size:  query.PageSize,
-					Data:  searchPosts,
+					Data:  []model.Post{},
 				}, nil
 			}
-			// Meilisearch 失败时继续走 MySQL
+			db = db.Where("id IN ?", ids)
+		} else {
+			// Meilisearch 不可用时降级为 MySQL LIKE
+			k := "%" + keyword + "%"
+			db = db.Where("title LIKE ? OR content LIKE ?", k, k)
 		}
-		keyword := "%" + query.Keyword + "%"
-		db = db.Where("title LIKE ? OR content LIKE ?", keyword, keyword)
 	}
 
 	// 按分类筛选
@@ -213,13 +233,25 @@ func (s *PostService) Update(id, currentUserID uint, isAdmin bool, req model.Upd
 	}
 
 	if req.Title != nil {
-		post.Title = *req.Title
+		post.Title = strings.TrimSpace(*req.Title)
+		if err := validateNonEmptyTrimmed(post.Title, "文章标题"); err != nil {
+			return nil, err
+		}
+		if err := validateMaxLength(post.Title, "文章标题", 255); err != nil {
+			return nil, err
+		}
 	}
 	if req.Summary != nil {
-		post.Summary = *req.Summary
+		post.Summary = strings.TrimSpace(*req.Summary)
+		if err := validateMaxLength(post.Summary, "文章摘要", 500); err != nil {
+			return nil, err
+		}
 	}
 	if req.Content != nil {
-		post.Content = *req.Content
+		post.Content = strings.TrimSpace(*req.Content)
+		if err := validateNonEmptyTrimmed(post.Content, "文章内容"); err != nil {
+			return nil, err
+		}
 	}
 	if req.CoverURL != nil {
 		post.CoverURL = *req.CoverURL

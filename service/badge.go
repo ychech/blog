@@ -102,34 +102,34 @@ func (s *BadgeService) Delete(id uint) error {
 
 // Award 颁发勋章给用户
 func (s *BadgeService) Award(userID, badgeID uint, reason string) (*model.UserBadge, error) {
-	// 检查用户是否存在
-	var user model.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
-		return nil, errors.New("用户不存在")
-	}
+	var userBadge model.UserBadge
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// 检查用户是否存在
+		var user model.User
+		if err := tx.First(&user, userID).Error; err != nil {
+			return errors.New("用户不存在")
+		}
 
-	// 检查勋章是否存在
-	var badge model.Badge
-	if err := database.DB.First(&badge, badgeID).Error; err != nil {
-		return nil, errors.New("勋章不存在")
-	}
+		// 检查勋章是否存在
+		var badge model.Badge
+		if err := tx.First(&badge, badgeID).Error; err != nil {
+			return errors.New("勋章不存在")
+		}
 
-	// 检查是否已颁发
-	var exist model.UserBadge
-	err := database.DB.Where("user_id = ? AND badge_id = ?", userID, badgeID).First(&exist).Error
-	if err == nil {
-		return nil, fmt.Errorf("该用户已拥有 %s 勋章", badge.Name)
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
-	userBadge := model.UserBadge{
-		UserID:  userID,
-		BadgeID: badgeID,
-		Reason:  reason,
-	}
-	if err := database.DB.Create(&userBadge).Error; err != nil {
+		userBadge = model.UserBadge{
+			UserID:  userID,
+			BadgeID: badgeID,
+			Reason:  reason,
+		}
+		if err := tx.Create(&userBadge).Error; err != nil {
+			if isDuplicateKeyError(err) {
+				return fmt.Errorf("该用户已拥有 %s 勋章", badge.Name)
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 

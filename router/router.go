@@ -89,8 +89,9 @@ func Setup() *gin.Engine {
 		api.GET("/comments/:id/like", commentLikeHandler.Status)
 		api.GET("/comments/likes", commentLikeHandler.BatchStatus)
 
-		// 勋章：公开列表与单用户勋章
+		// 勋章：公开列表、详情与单用户勋章
 		api.GET("/badges", badgeHandler.List)
+		api.GET("/badges/:id", badgeHandler.Get)
 		api.GET("/users/:id/badges", badgeHandler.GetUserBadges)
 	}
 
@@ -127,7 +128,8 @@ func Setup() *gin.Engine {
 		admin.PUT("/categories/:id", categoryHandler.Update)
 		admin.DELETE("/categories/:id", categoryHandler.Delete)
 
-		// 标签管理：删除仍由管理员控制
+		// 标签管理：更新与删除由管理员控制
+		admin.PUT("/tags/:id", tagHandler.Update)
 		admin.DELETE("/tags/:id", tagHandler.Delete)
 
 		// 评论管理：管理员可删除任意评论

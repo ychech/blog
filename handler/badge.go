@@ -23,6 +23,17 @@ func NewBadgeHandler() *BadgeHandler {
 }
 
 // Create 创建勋章（管理员）
+// @Summary 创建勋章（管理员）
+// @Tags 勋章
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.CreateBadgeRequest true "勋章信息"
+// @Success 201 {object} utils.Response{data=model.Badge}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /badges [post]
 func (h *BadgeHandler) Create(c *gin.Context) {
 	var req model.CreateBadgeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -40,6 +51,11 @@ func (h *BadgeHandler) Create(c *gin.Context) {
 }
 
 // List 获取所有勋章
+// @Summary 获取所有勋章
+// @Tags 勋章
+// @Produce json
+// @Success 200 {object} utils.Response{data=[]model.Badge}
+// @Router /badges [get]
 func (h *BadgeHandler) List(c *gin.Context) {
 	badges, err := h.service.List()
 	if err != nil {
@@ -51,6 +67,13 @@ func (h *BadgeHandler) List(c *gin.Context) {
 }
 
 // Get 获取勋章详情
+// @Summary 获取勋章详情
+// @Tags 勋章
+// @Produce json
+// @Param id path int true "勋章 ID"
+// @Success 200 {object} utils.Response{data=model.Badge}
+// @Failure 404 {object} utils.Response
+// @Router /badges/{id} [get]
 func (h *BadgeHandler) Get(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -68,6 +91,18 @@ func (h *BadgeHandler) Get(c *gin.Context) {
 }
 
 // Update 更新勋章（管理员）
+// @Summary 更新勋章（管理员）
+// @Tags 勋章
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "勋章 ID"
+// @Param body body model.UpdateBadgeRequest true "勋章信息"
+// @Success 200 {object} utils.Response{data=model.Badge}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /badges/{id} [put]
 func (h *BadgeHandler) Update(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -91,6 +126,14 @@ func (h *BadgeHandler) Update(c *gin.Context) {
 }
 
 // Delete 删除勋章（管理员）
+// @Summary 删除勋章（管理员）
+// @Tags 勋章
+// @Security BearerAuth
+// @Param id path int true "勋章 ID"
+// @Success 200 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /badges/{id} [delete]
 func (h *BadgeHandler) Delete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -107,6 +150,17 @@ func (h *BadgeHandler) Delete(c *gin.Context) {
 }
 
 // Award 颁发勋章给用户（管理员）
+// @Summary 颁发勋章给用户（管理员）
+// @Tags 勋章
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.AwardBadgeRequest true "用户 ID、勋章 ID 与原因"
+// @Success 200 {object} utils.Response{data=model.UserBadge}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /badges/award [post]
 func (h *BadgeHandler) Award(c *gin.Context) {
 	var req model.AwardBadgeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -124,6 +178,12 @@ func (h *BadgeHandler) Award(c *gin.Context) {
 }
 
 // GetUserBadges 获取指定用户的勋章列表
+// @Summary 获取指定用户的勋章列表
+// @Tags 勋章
+// @Produce json
+// @Param id path int true "用户 ID"
+// @Success 200 {object} utils.Response{data=[]model.UserBadge}
+// @Router /users/{id}/badges [get]
 func (h *BadgeHandler) GetUserBadges(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -141,6 +201,13 @@ func (h *BadgeHandler) GetUserBadges(c *gin.Context) {
 }
 
 // GetMyBadges 获取当前登录用户的勋章列表
+// @Summary 获取当前登录用户的勋章列表
+// @Tags 勋章
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response{data=[]model.UserBadge}
+// @Failure 401 {object} utils.Response
+// @Router /auth/badges [get]
 func (h *BadgeHandler) GetMyBadges(c *gin.Context) {
 	userID, ok := middleware.GetCurrentUserID(c)
 	if !ok {
@@ -158,6 +225,14 @@ func (h *BadgeHandler) GetMyBadges(c *gin.Context) {
 }
 
 // Revoke 收回用户勋章（管理员）
+// @Summary 收回用户勋章（管理员）
+// @Tags 勋章
+// @Security BearerAuth
+// @Param id path int true "用户勋章 ID"
+// @Success 200 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /user-badges/{id} [delete]
 func (h *BadgeHandler) Revoke(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

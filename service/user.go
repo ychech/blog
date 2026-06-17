@@ -8,6 +8,7 @@ import (
 	"blog/model"
 	"blog/utils"
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,12 +23,6 @@ func NewUserService() *UserService {
 
 // Register 用户注册
 func (s *UserService) Register(req model.RegisterRequest) (*model.LoginResponse, error) {
-	// 检查用户名是否已存在
-	var exist model.User
-	if err := database.DB.Where("username = ?", req.Username).First(&exist).Error; err == nil {
-		return nil, errors.New("用户名已存在")
-	}
-
 	// 密码加密
 	hashedPwd, err := utils.HashPassword(req.Password)
 	if err != nil {
@@ -42,6 +37,9 @@ func (s *UserService) Register(req model.RegisterRequest) (*model.LoginResponse,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
+		if isDuplicateKeyError(err) {
+			return nil, errors.New("用户名已存在")
+		}
 		return nil, err
 	}
 
@@ -187,12 +185,22 @@ func (s *UserService) UpdateProfile(id uint, req model.UpdateProfileRequest) (*m
 	// 只更新传入的字段
 	updates := map[string]interface{}{}
 	if req.Nickname != "" {
-		updates["nickname"] = req.Nickname
+		nickname := strings.TrimSpace(req.Nickname)
+		if err := validateMaxLength(nickname, "昵称", 100); err != nil {
+			return nil, err
+		}
+		updates["nickname"] = nickname
 	}
 	if req.Email != "" {
+		if err := validateEmail(req.Email); err != nil {
+			return nil, err
+		}
 		updates["email"] = req.Email
 	}
 	if req.Avatar != "" {
+		if err := validateMaxLength(req.Avatar, "头像地址", 255); err != nil {
+			return nil, err
+		}
 		updates["avatar"] = req.Avatar
 	}
 
@@ -201,6 +209,10 @@ func (s *UserService) UpdateProfile(id uint, req model.UpdateProfileRequest) (*m
 	}
 
 	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+	// 重新加载以返回最新值
+	if err := database.DB.First(&user, id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
