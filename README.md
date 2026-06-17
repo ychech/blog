@@ -104,6 +104,66 @@ blog/
 | **model** | 数据模型、请求/响应结构体 | `model/model.go` |
 | **utils** | 通用工具：JWT、密码、响应、日志 | `utils/*.go` |
 
+## Docker 一键部署（推荐）
+
+项目提供两套 Docker Compose 文件，适配不同网络环境：
+
+| 文件 | 模式 | 说明 |
+|---|---|---|
+| `docker-compose.yml` | 基础设施 | 仅启动 MySQL / Redis / Meilisearch / Jaeger / Prometheus / Grafana，适合本地开发 |
+| `docker-compose.full.yml` | 全栈部署 | 包含上述基础设施 + 构建并运行 Go 后端容器，适合服务器 |
+
+### 本地开发（推荐）
+
+因为国内网络可能拉不到 `golang:1.23-alpine` / `alpine:latest`，本地开发建议：
+
+1. 用 Docker 启动基础设施：
+
+```bash
+cd blog
+./start.sh infra
+```
+
+2. 在另一个终端用本地 Go 直接启动后端：
+
+```bash
+APP_ENV=dev go run main.go
+```
+
+这样 Go 后端连接 Docker 里的 MySQL / Redis / Meilisearch / Jaeger，无需拉取 Go 镜像。
+
+### 服务器全容器化部署
+
+如果服务器能正常拉取 Docker Hub 镜像：
+
+```bash
+cd blog
+./start.sh full
+```
+
+这会构建并启动 Go 后端容器 + 全部基础设施。
+
+### 启动的服务
+
+| 服务 | 地址 | 说明 |
+|---|---|---|
+| 博客后端 | http://localhost:8080 | Go + Gin |
+| Swagger | http://localhost:8080/swagger/index.html | API 文档 |
+| Grafana | http://localhost:3000 | 账号 admin / admin |
+| Prometheus | http://localhost:9090 | 指标采集 |
+| Jaeger | http://localhost:16686 | 链路追踪 |
+| Meilisearch | http://localhost:7700 | 全文搜索 |
+
+### 常用命令
+
+```bash
+./start.sh infra   # 仅启动基础设施（默认）
+./start.sh full    # 全栈启动（含后端镜像构建）
+./start.sh down    # 停止并移除容器
+./start.sh logs    # 查看基础设施日志
+./start.sh build   # 仅构建 blog 后端镜像
+```
+
 ## 快速开始
 
 ### 环境要求

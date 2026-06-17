@@ -1,0 +1,62 @@
+# 博客全栈部署（包含 Go 后端镜像构建）
+# 适合服务器部署，需要能拉取/构建 Docker 镜像。
+#
+# 启动：docker compose -f docker-compose.full.yml up -d --build
+# 停止：docker compose -f docker-compose.full.yml down
+#
+# 访问地址：
+#   博客后端：http://localhost:8080
+#   Swagger：http://localhost:8080/swagger/index.html
+#   Grafana：http://localhost:3000  (admin/admin)
+#   Prometheus：http://localhost:9090
+#   Jaeger UI：http://localhost:16686
+#   Meilisearch：http://localhost:7700
+
+include:
+  - docker-compose.yml
+
+services:
+  blog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blog-server
+    environment:
+      APP_ENV: prod
+      BLOG_SERVER_HOST: 0.0.0.0
+      BLOG_SERVER_PORT: 8080
+      BLOG_DB_HOST: mysql
+      BLOG_DB_PORT: 3306
+      BLOG_DB_USER: root
+      BLOG_DB_PASSWORD: "123456"
+      BLOG_DB_NAME: blog
+      BLOG_DB_CHARSET: utf8mb4
+      BLOG_REDIS_HOST: redis
+      BLOG_REDIS_PORT: 6379
+      BLOG_JWT_SECRET: "change-this-secret-in-production"
+      BLOG_RATE_LIMIT_MODE: redis
+      BLOG_EMAIL_VERIFICATION_ENABLED: "false"
+      BLOG_TRACING_ENABLED: "true"
+      BLOG_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      BLOG_TRACING_SAMPLE_RATE: "1.0"
+      BLOG_TRACING_SERVICE_NAME: blog
+      BLOG_MEILISEARCH_ENABLED: "true"
+      BLOG_MEILISEARCH_HOST: http://meilisearch:7700
+      BLOG_MEILISEARCH_API_KEY: "blog-master-key"
+      BLOG_MEILISEARCH_INDEX: posts
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

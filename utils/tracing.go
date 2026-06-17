@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv/v1.24.0"
+	"go.opentelemetry.io/otel/semconv/v1.41.0"
 )
 
 var tracerProvider *sdktrace.TracerProvider
