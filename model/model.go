@@ -311,6 +311,11 @@ type CreateCommentRequest struct {
 	Content  string `json:"content" binding:"required"`
 }
 
+// UpdateCommentRequest 更新评论请求
+type UpdateCommentRequest struct {
+	Content string `json:"content" binding:"required"`
+}
+
 // Pagination 分页参数
 type Pagination struct {
 	Page     int `form:"page"`

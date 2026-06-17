@@ -110,6 +110,7 @@ func Setup() *gin.Engine {
 
 		// 评论管理
 		authorized.POST("/comments", commentHandler.Create)
+		authorized.PUT("/comments/:id", commentHandler.Update)
 
 		// 文件上传
 		authorized.POST("/uploads", uploadHandler.UploadImage)

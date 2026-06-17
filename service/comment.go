@@ -5,6 +5,8 @@ import (
 	"blog/model"
 	"fmt"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 // CommentService 评论服务，处理评论创建、文章评论列表查询与删除。
@@ -13,6 +15,32 @@ type CommentService struct{}
 // NewCommentService 创建评论服务
 func NewCommentService() *CommentService {
 	return &CommentService{}
+}
+
+// Update 更新评论。仅评论作者或管理员可编辑。
+func (s *CommentService) Update(id, currentUserID uint, isAdmin bool, req model.UpdateCommentRequest) (*model.Comment, error) {
+	content := strings.TrimSpace(req.Content)
+	if err := validateNonEmptyTrimmed(content, "评论内容"); err != nil {
+		return nil, err
+	}
+	if err := validateMaxLength(content, "评论内容", 5000); err != nil {
+		return nil, err
+	}
+
+	var comment model.Comment
+	if err := database.DB.First(&comment, id).Error; err != nil {
+		return nil, err
+	}
+
+	if !isAdmin && comment.AuthorID != currentUserID {
+		return nil, fmt.Errorf("无权编辑该评论")
+	}
+
+	comment.Content = content
+	if err := database.DB.Save(&comment).Error; err != nil {
+		return nil, err
+	}
+	return &comment, nil
 }
 
 // Create 创建评论
@@ -90,6 +118,7 @@ func (s *CommentService) ListByPost(postID uint) ([]model.Comment, error) {
 }
 
 // Delete 删除评论。管理员可删除任意评论，普通用户只能删除自己的评论。
+// 删除时会级联软删除所有子回复，避免留下悬挂的 parent_id。
 func (s *CommentService) Delete(id, currentUserID uint, isAdmin bool) error {
 	var comment model.Comment
 	if err := database.DB.First(&comment, id).Error; err != nil {
@@ -98,5 +127,27 @@ func (s *CommentService) Delete(id, currentUserID uint, isAdmin bool) error {
 	if !isAdmin && comment.AuthorID != currentUserID {
 		return fmt.Errorf("无权删除该评论")
 	}
-	return database.DB.Delete(&comment).Error
+
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		ids := s.collectDescendantIDs(tx, id)
+		ids = append(ids, id)
+		if err := tx.Where("id IN ?", ids).Delete(&model.Comment{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// collectDescendantIDs 递归收集某条评论的所有后代评论 ID。
+func (s *CommentService) collectDescendantIDs(tx *gorm.DB, parentID uint) []uint {
+	var ids []uint
+	var children []model.Comment
+	if err := tx.Unscoped().Where("parent_id = ?", parentID).Select("id").Find(&children).Error; err != nil {
+		return ids
+	}
+	for _, child := range children {
+		ids = append(ids, child.ID)
+		ids = append(ids, s.collectDescendantIDs(tx, child.ID)...)
+	}
+	return ids
 }

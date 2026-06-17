@@ -81,6 +81,46 @@ func (h *CommentHandler) ListByPost(c *gin.Context) {
 	utils.Success(c, comments)
 }
 
+// Update 更新评论（需要登录；管理员可编辑任意评论）
+// @Summary 更新评论
+// @Tags 评论
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "评论 ID"
+// @Param body body model.UpdateCommentRequest true "评论内容"
+// @Success 200 {object} utils.Response{data=model.Comment}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /comments/{id} [put]
+func (h *CommentHandler) Update(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.BadRequest(c, "评论 ID 格式错误")
+		return
+	}
+
+	var req model.UpdateCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	comment, err := h.service.Update(uint(id), userID, middleware.IsAdmin(c), req)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, comment)
+}
+
 // Delete 删除评论（需要登录；管理员可删除任意评论）
 // @Summary 删除评论
 // @Tags 评论

@@ -6,7 +6,9 @@ package service
 import (
 	"blog/database"
 	"blog/model"
+	"fmt"
 	"testing"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -19,7 +21,9 @@ func setupTestDB(t *testing.T) (cleanup func()) {
 
 	originalDB := database.DB
 
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	// 每个测试使用独立的内存数据库，避免并行/顺序执行时数据互相污染
+	dbName := fmt.Sprintf("file:memdb_%d?mode=memory&cache=shared", time.Now().UnixNano())
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("创建测试数据库失败: %v", err)
 	}

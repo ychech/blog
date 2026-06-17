@@ -265,6 +265,13 @@ definitions:
       token_id:
         type: string
     type: object
+  model.UpdateCommentRequest:
+    properties:
+      content:
+        type: string
+    required:
+    - content
+    type: object
   model.UpdatePostRequest:
     properties:
       category_id:
@@ -1234,6 +1241,46 @@ paths:
       security:
       - BearerAuth: []
       summary: 删除评论
+      tags:
+      - 评论
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 评论 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 评论内容
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Comment'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新评论
       tags:
       - 评论
   /comments/{id}/like:
