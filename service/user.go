@@ -175,6 +175,56 @@ func (s *UserService) GetStats() (gin.H, error) {
 	}, nil
 }
 
+// ChangePassword 修改当前用户密码
+func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) error {
+	var user model.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		return err
+	}
+
+	if !utils.CheckPassword(oldPassword, user.Password) {
+		return errors.New("原密码错误")
+	}
+
+	hashedPwd, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	return database.DB.Model(&user).Update("password", hashedPwd).Error
+}
+
+// GetUserDetail 获取用户详情（管理员使用）
+func (s *UserService) GetUserDetail(id uint) (*model.User, error) {
+	var user model.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// UpdateRole 更新用户角色（管理员使用）
+func (s *UserService) UpdateRole(id uint, role model.UserRole) (*model.User, error) {
+	var user model.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		return nil, err
+	}
+
+	if role != model.UserRoleAdmin && role != model.UserRoleUser {
+		return nil, errors.New("无效的角色")
+	}
+
+	if err := database.DB.Model(&user).Update("role", role).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// DeleteUser 删除用户（管理员使用，软删除）
+func (s *UserService) DeleteUser(id uint) error {
+	return database.DB.Delete(&model.User{}, id).Error
+}
+
 // UpdateProfile 更新当前用户资料
 func (s *UserService) UpdateProfile(id uint, req model.UpdateProfileRequest) (*model.User, error) {
 	var user model.User

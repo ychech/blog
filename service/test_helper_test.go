@@ -34,6 +34,7 @@ func setupTestDB(t *testing.T) (cleanup func()) {
 		&model.CommentLike{},
 		&model.Badge{},
 		&model.UserBadge{},
+		&model.Notification{},
 	); err != nil {
 		t.Fatalf("迁移测试数据库失败: %v", err)
 	}

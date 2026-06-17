@@ -71,8 +71,12 @@ func Setup() *gin.Engine {
 		auth.PUT("/me", middleware.JWTAuth(), authHandler.UpdateProfile)
 		auth.POST("/send-verification-email", middleware.JWTAuth(), authHandler.SendVerificationEmail)
 		auth.POST("/verify-email", middleware.JWTAuth(), authHandler.VerifyEmail)
+		auth.POST("/change-password", middleware.JWTAuth(), authHandler.ChangePassword)
 		auth.GET("/badges", middleware.JWTAuth(), badgeHandler.GetMyBadges)
 		auth.GET("/users", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminListUsers)
+		auth.GET("/users/:id", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetUser)
+		auth.PUT("/users/:id/role", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminUpdateUserRole)
+		auth.DELETE("/users/:id", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminDeleteUser)
 		auth.GET("/stats", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetStats)
 	}
 
@@ -150,6 +154,8 @@ func Setup() *gin.Engine {
 	api.GET("/notifications", middleware.JWTAuth(), notificationHandler.List)
 	api.GET("/notifications/unread-count", middleware.JWTAuth(), notificationHandler.CountUnread)
 	api.PUT("/notifications/:id/read", middleware.JWTAuth(), notificationHandler.MarkAsRead)
+	api.PUT("/notifications/read-all", middleware.JWTAuth(), notificationHandler.MarkAllAsRead)
+	api.DELETE("/notifications/:id", middleware.JWTAuth(), notificationHandler.Delete)
 
 	// 404 兜底处理：所有未匹配的路由返回统一错误
 	r.NoRoute(func(c *gin.Context) {

@@ -7,6 +7,7 @@ import (
 	"blog/model"
 	"blog/service"
 	"blog/utils"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -165,6 +166,38 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 	utils.Success(c, gin.H{"message": "邮箱验证成功"})
 }
 
+// ChangePassword 修改当前登录用户密码
+// @Summary 修改当前登录用户密码
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.ChangePasswordRequest true "原密码与新密码"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /auth/change-password [post]
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "未登录")
+		return
+	}
+
+	var req model.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.userService.ChangePassword(userID, req.OldPassword, req.NewPassword); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "密码修改成功"})
+}
+
 // UpdateProfile 更新当前登录用户资料
 // @Summary 更新当前登录用户资料
 // @Tags 认证
@@ -242,4 +275,90 @@ func (h *AuthHandler) AdminGetStats(c *gin.Context) {
 	}
 
 	utils.Success(c, stats)
+}
+
+// AdminGetUser 管理员获取用户详情
+// @Summary 管理员获取用户详情
+// @Tags 认证
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "用户 ID"
+// @Success 200 {object} utils.Response{data=model.User}
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Failure 404 {object} utils.Response
+// @Router /auth/users/{id} [get]
+func (h *AuthHandler) AdminGetUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.BadRequest(c, "用户 ID 格式错误")
+		return
+	}
+
+	user, err := h.userService.GetUserDetail(uint(id))
+	if err != nil {
+		utils.NotFound(c, "用户不存在")
+		return
+	}
+
+	utils.Success(c, user)
+}
+
+// AdminUpdateUserRole 管理员更新用户角色
+// @Summary 管理员更新用户角色
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "用户 ID"
+// @Param body body model.UpdateUserRoleRequest true "角色"
+// @Success 200 {object} utils.Response{data=model.User}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /auth/users/{id}/role [put]
+func (h *AuthHandler) AdminUpdateUserRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.BadRequest(c, "用户 ID 格式错误")
+		return
+	}
+
+	var req model.UpdateUserRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	user, err := h.userService.UpdateRole(uint(id), req.Role)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, user)
+}
+
+// AdminDeleteUser 管理员删除用户
+// @Summary 管理员删除用户
+// @Tags 认证
+// @Security BearerAuth
+// @Param id path int true "用户 ID"
+// @Success 200 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /auth/users/{id} [delete]
+func (h *AuthHandler) AdminDeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.BadRequest(c, "用户 ID 格式错误")
+		return
+	}
+
+	if err := h.userService.DeleteUser(uint(id)); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, nil)
 }

@@ -77,6 +77,27 @@ func MarkNotificationAsRead(userID, notificationID uint) error {
 	return nil
 }
 
+// MarkAllNotificationsAsRead 将用户所有未读通知标记为已读。
+func MarkAllNotificationsAsRead(userID uint) (int64, error) {
+	result := database.DB.Model(&model.Notification{}).
+		Where("user_id = ? AND is_read = ?", userID, false).
+		Update("is_read", true)
+	return result.RowsAffected, result.Error
+}
+
+// DeleteNotification 删除指定通知。
+// 仅允许通知接收者自己删除。
+func DeleteNotification(userID, notificationID uint) error {
+	result := database.DB.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&model.Notification{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("通知不存在或无权限")
+	}
+	return nil
+}
+
 // CountUnreadNotifications 统计用户未读通知数量。
 func CountUnreadNotifications(userID uint) (int64, error) {
 	var count int64

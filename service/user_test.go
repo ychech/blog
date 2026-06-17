@@ -117,3 +117,80 @@ func TestUserService_UpdateProfile(t *testing.T) {
 		t.Errorf("邮箱未更新")
 	}
 }
+
+func TestUserService_ChangePassword(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	config.C = config.DefaultConfig()
+
+	svc := NewUserService()
+	resp, err := svc.Register(model.RegisterRequest{
+		Username: "dave",
+		Password: "123456",
+	})
+	if err != nil {
+		t.Fatalf("注册失败: %v", err)
+	}
+
+	// 原密码错误
+	if err := svc.ChangePassword(resp.User.ID, "wrong", "newpass"); err == nil {
+		t.Error("原密码错误时应失败")
+	}
+
+	// 正确修改密码
+	if err := svc.ChangePassword(resp.User.ID, "123456", "newpass"); err != nil {
+		t.Fatalf("修改密码失败: %v", err)
+	}
+
+	// 旧密码已无法登录
+	_, err = svc.Login(model.LoginRequest{
+		Username: "dave",
+		Password: "123456",
+	})
+	if err == nil {
+		t.Error("旧密码应无法登录")
+	}
+
+	// 新密码可登录
+	_, err = svc.Login(model.LoginRequest{
+		Username: "dave",
+		Password: "newpass",
+	})
+	if err != nil {
+		t.Errorf("新密码应可登录: %v", err)
+	}
+}
+
+func TestUserService_UpdateRoleAndDelete(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	config.C = config.DefaultConfig()
+
+	svc := NewUserService()
+	resp, err := svc.Register(model.RegisterRequest{
+		Username: "eve",
+		Password: "123456",
+	})
+	if err != nil {
+		t.Fatalf("注册失败: %v", err)
+	}
+
+	user, err := svc.UpdateRole(resp.User.ID, model.UserRoleAdmin)
+	if err != nil {
+		t.Fatalf("更新角色失败: %v", err)
+	}
+	if user.Role != model.UserRoleAdmin {
+		t.Errorf("角色未更新为 admin: %s", user.Role)
+	}
+
+	if err := svc.DeleteUser(resp.User.ID); err != nil {
+		t.Fatalf("删除用户失败: %v", err)
+	}
+
+	_, err = svc.GetUserDetail(resp.User.ID)
+	if err == nil {
+		t.Error("删除后应查不到用户")
+	}
+}

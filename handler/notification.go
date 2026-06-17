@@ -77,6 +77,58 @@ func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 	utils.Success(c, gin.H{"message": "已标记为已读"})
 }
 
+// MarkAllAsRead 将当前登录用户的所有通知标记为已读。
+// @Summary 标记所有通知为已读
+// @Tags 通知
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response{data=map[string]int64}
+// @Router /notifications/read-all [put]
+func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	affected, err := service.MarkAllNotificationsAsRead(userID)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"affected": affected})
+}
+
+// Delete 删除指定通知。
+// @Summary 删除通知
+// @Tags 通知
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "通知 ID"
+// @Success 200 {object} utils.Response
+// @Router /notifications/{id} [delete]
+func (h *NotificationHandler) Delete(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		utils.BadRequest(c, "通知 ID 无效")
+		return
+	}
+
+	if err := service.DeleteNotification(userID, uint(id)); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, nil)
+}
+
 // CountUnread 获取当前登录用户的未读通知数。
 // @Summary 获取未读通知数
 // @Tags 通知

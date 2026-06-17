@@ -1,5 +1,42 @@
 basePath: /api
 definitions:
+  model.AwardBadgeRequest:
+    properties:
+      badge_id:
+        type: integer
+      reason:
+        type: string
+      user_id:
+        type: integer
+    required:
+    - badge_id
+    - user_id
+    type: object
+  model.Badge:
+    properties:
+      contract_address:
+        description: 可选：NFT 合约地址
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      icon_url:
+        description: 勋章图标
+        type: string
+      id:
+        type: integer
+      metadata_url:
+        description: 可选：NFT metadata URL
+        type: string
+      name:
+        type: string
+      token_id:
+        description: 可选：NFT token ID
+        type: string
+      updated_at:
+        type: string
+    type: object
   model.Category:
     properties:
       created_at:
@@ -10,6 +47,17 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  model.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
     type: object
   model.Comment:
     properties:
@@ -33,6 +81,23 @@ definitions:
         type: integer
       updated_at:
         type: string
+    type: object
+  model.CreateBadgeRequest:
+    properties:
+      contract_address:
+        type: string
+      description:
+        type: string
+      icon_url:
+        type: string
+      metadata_url:
+        type: string
+      name:
+        type: string
+      token_id:
+        type: string
+    required:
+    - name
     type: object
   model.CreateCategoryRequest:
     properties:
@@ -185,6 +250,21 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.UpdateBadgeRequest:
+    properties:
+      contract_address:
+        type: string
+      description:
+        type: string
+      icon_url:
+        type: string
+      metadata_url:
+        type: string
+      name:
+        type: string
+      token_id:
+        type: string
+    type: object
   model.UpdatePostRequest:
     properties:
       category_id:
@@ -213,6 +293,24 @@ definitions:
       nickname:
         type: string
     type: object
+  model.UpdateTagRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  model.UpdateUserRoleRequest:
+    properties:
+      role:
+        allOf:
+        - $ref: '#/definitions/model.UserRole'
+        enum:
+        - admin
+        - user
+    required:
+    - role
+    type: object
   model.User:
     properties:
       avatar:
@@ -221,6 +319,8 @@ definitions:
         type: string
       email:
         type: string
+      email_verified:
+        type: boolean
       id:
         type: integer
       nickname:
@@ -232,6 +332,22 @@ definitions:
       username:
         type: string
     type: object
+  model.UserBadge:
+    properties:
+      badge:
+        $ref: '#/definitions/model.Badge'
+      badge_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      reason:
+        description: 颁发原因
+        type: string
+      user_id:
+        type: integer
+    type: object
   model.UserRole:
     enum:
     - admin
@@ -240,6 +356,13 @@ definitions:
     x-enum-varnames:
     - UserRoleAdmin
     - UserRoleUser
+  model.VerifyEmailRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
   utils.Response:
     properties:
       code:
@@ -255,6 +378,7 @@ definitions:
     - 401
     - 403
     - 404
+    - 429
     - 500
     - 1001
     type: integer
@@ -264,6 +388,7 @@ definitions:
     - CodeUnauthorized
     - CodeForbidden
     - CodeNotFound
+    - CodeTooManyRequests
     - CodeInternalError
     - CodeBusinessError
 host: localhost:8080
@@ -279,6 +404,90 @@ info:
   title: 个人博客 API
   version: "1.0"
 paths:
+  /api/audit-logs:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 查询审计日志
+      tags:
+      - 管理后台
+  /auth/badges:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.UserBadge'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取当前登录用户的勋章列表
+      tags:
+      - 勋章
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 原密码与新密码
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 修改当前登录用户密码
+      tags:
+      - 认证
   /auth/login:
     post:
       consumes:
@@ -405,6 +614,30 @@ paths:
       summary: 用户注册
       tags:
       - 认证
+  /auth/send-verification-email:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 发送邮箱验证码
+      tags:
+      - 认证
   /auth/stats:
     get:
       produces:
@@ -481,6 +714,338 @@ paths:
       summary: 管理员获取用户列表
       tags:
       - 认证
+  /auth/users/{id}:
+    delete:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 管理员删除用户
+      tags:
+      - 认证
+    get:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 管理员获取用户详情
+      tags:
+      - 认证
+  /auth/users/{id}/role:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateUserRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 管理员更新用户角色
+      tags:
+      - 认证
+  /auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 验证码
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 验证邮箱验证码
+      tags:
+      - 认证
+  /badges:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Badge'
+                  type: array
+              type: object
+      summary: 获取所有勋章
+      tags:
+      - 勋章
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 勋章信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateBadgeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Badge'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建勋章（管理员）
+      tags:
+      - 勋章
+  /badges/{id}:
+    delete:
+      parameters:
+      - description: 勋章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除勋章（管理员）
+      tags:
+      - 勋章
+    get:
+      parameters:
+      - description: 勋章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Badge'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: 获取勋章详情
+      tags:
+      - 勋章
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 勋章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 勋章信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateBadgeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Badge'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新勋章（管理员）
+      tags:
+      - 勋章
+  /badges/award:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户 ID、勋章 ID 与原因
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AwardBadgeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserBadge'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 颁发勋章给用户（管理员）
+      tags:
+      - 勋章
   /categories:
     get:
       produces:
@@ -764,6 +1329,118 @@ paths:
       summary: 批量获取评论点赞状态
       tags:
       - 评论点赞
+  /notifications:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 获取通知列表
+      tags:
+      - 通知
+  /notifications/{id}:
+    delete:
+      parameters:
+      - description: 通知 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除通知
+      tags:
+      - 通知
+  /notifications/{id}/read:
+    put:
+      parameters:
+      - description: 通知 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 标记通知为已读
+      tags:
+      - 通知
+  /notifications/read-all:
+    put:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    format: int64
+                    type: integer
+                  type: object
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 标记所有通知为已读
+      tags:
+      - 通知
+  /notifications/unread-count:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    format: int64
+                    type: integer
+                  type: object
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 获取未读通知数
+      tags:
+      - 通知
   /posts:
     get:
       parameters:
@@ -1135,6 +1812,50 @@ paths:
       summary: 删除标签（管理员）
       tags:
       - 标签
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 标签 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 标签名称
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Tag'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新标签（管理员）
+      tags:
+      - 标签
   /uploads:
     post:
       consumes:
@@ -1177,6 +1898,57 @@ paths:
       summary: 上传图片
       tags:
       - 文件上传
+  /user-badges/{id}:
+    delete:
+      parameters:
+      - description: 用户勋章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 收回用户勋章（管理员）
+      tags:
+      - 勋章
+  /users/{id}/badges:
+    get:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.UserBadge'
+                  type: array
+              type: object
+      summary: 获取指定用户的勋章列表
+      tags:
+      - 勋章
 securityDefinitions:
   BearerAuth:
     description: 请输入 "Bearer {token}"，例如：Bearer eyJhbGciOiJIUzI1NiIs...
