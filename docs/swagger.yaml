@@ -763,6 +763,41 @@ paths:
       summary: 置顶/取消置顶评论
       tags:
       - 评论
+  /admin/comments/batch-delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 评论 ID 列表
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.BatchDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 批量删除评论
+      tags:
+      - 评论
   /admin/posts/batch-delete:
     post:
       consumes:
@@ -798,6 +833,41 @@ paths:
       summary: 批量删除文章
       tags:
       - 管理后台
+  /admin/users/batch-delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户 ID 列表
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.BatchDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 管理员批量删除用户
+      tags:
+      - 认证
   /api/audit-logs:
     get:
       parameters:

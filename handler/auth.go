@@ -511,6 +511,33 @@ func (h *AuthHandler) AdminUpdateUserStatus(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// AdminBatchDeleteUsers 管理员批量删除用户。
+// @Summary 管理员批量删除用户
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.BatchDeleteRequest true "用户 ID 列表"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /admin/users/batch-delete [post]
+func (h *AuthHandler) AdminBatchDeleteUsers(c *gin.Context) {
+	var req model.BatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.userService.BatchDelete(req.IDs); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, nil)
+}
+
 // AdminDeleteUser 管理员删除用户
 // @Summary 管理员删除用户
 // @Tags 认证

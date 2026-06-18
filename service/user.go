@@ -237,6 +237,14 @@ func (s *UserService) DeleteUser(id uint) error {
 	return database.DB.Delete(&model.User{}, id).Error
 }
 
+// BatchDelete 批量删除用户（管理员使用，软删除）。
+func (s *UserService) BatchDelete(ids []uint) error {
+	if len(ids) == 0 {
+		return errors.New("未指定要删除的用户")
+	}
+	return database.DB.Where("id IN ?", ids).Delete(&model.User{}).Error
+}
+
 // CheckUserActive 检查用户是否处于启用状态。
 func (s *UserService) CheckUserActive(id uint) (bool, error) {
 	var user model.User

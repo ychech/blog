@@ -117,6 +117,27 @@ func (s *CommentService) ListByPost(postID uint) ([]model.Comment, error) {
 	return comments, nil
 }
 
+// BatchDelete 批量删除评论（管理员），会级联软删除所有子回复。
+func (s *CommentService) BatchDelete(ids []uint) error {
+	if len(ids) == 0 {
+		return fmt.Errorf("未指定要删除的评论")
+	}
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		for _, id := range ids {
+			if err := s.deleteWithChildren(tx, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *CommentService) deleteWithChildren(tx *gorm.DB, id uint) error {
+	ids := s.collectDescendantIDs(tx, id)
+	ids = append(ids, id)
+	return tx.Where("id IN ?", ids).Delete(&model.Comment{}).Error
+}
+
 // PinComment 置顶/取消置顶评论（管理员）。
 func (s *CommentService) PinComment(id uint, pinned bool) (*model.Comment, error) {
 	var comment model.Comment

@@ -168,9 +168,13 @@ func Setup() *gin.Engine {
 		admin.POST("/posts/batch-delete", postHandler.BatchDelete)
 
 		// 评论管理：管理员可删除/置顶/加精任意评论
+		admin.POST("/comments/batch-delete", commentHandler.BatchDelete)
 		admin.DELETE("/comments/:id", commentHandler.Delete)
 		admin.PUT("/comments/:id/pin", commentHandler.PinComment)
 		admin.PUT("/comments/:id/essence", commentHandler.EssenceComment)
+
+		// 用户批量操作
+		admin.POST("/users/batch-delete", authHandler.AdminBatchDeleteUsers)
 
 		// 勋章管理
 		admin.POST("/badges", badgeHandler.Create)

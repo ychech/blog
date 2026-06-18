@@ -179,6 +179,33 @@ func (h *CommentHandler) EssenceComment(c *gin.Context) {
 	utils.Success(c, comment)
 }
 
+// BatchDelete 批量删除评论（管理员）。
+// @Summary 批量删除评论
+// @Tags 评论
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.BatchDeleteRequest true "评论 ID 列表"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /admin/comments/batch-delete [post]
+func (h *CommentHandler) BatchDelete(c *gin.Context) {
+	var req model.BatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.service.BatchDelete(req.IDs); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, nil)
+}
+
 // Delete 删除评论（需要登录；管理员可删除任意评论）
 // @Summary 删除评论
 // @Tags 评论
