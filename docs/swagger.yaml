@@ -1,5 +1,20 @@
 basePath: /api
 definitions:
+  model.AdminStats:
+    properties:
+      counts:
+        $ref: '#/definitions/model.CountsData'
+      hot_posts:
+        items:
+          $ref: '#/definitions/model.Post'
+        type: array
+      top_tags:
+        items:
+          $ref: '#/definitions/model.Tag'
+        type: array
+      trends:
+        $ref: '#/definitions/model.TrendsData'
+    type: object
   model.AwardBadgeRequest:
     properties:
       badge_id:
@@ -109,6 +124,21 @@ definitions:
     - CommentReportStatusPending
     - CommentReportStatusApproved
     - CommentReportStatusRejected
+  model.CountsData:
+    properties:
+      badges:
+        type: integer
+      categories:
+        type: integer
+      comments:
+        type: integer
+      posts:
+        type: integer
+      tags:
+        type: integer
+      users:
+        type: integer
+    type: object
   model.CreateBadgeRequest:
     properties:
       contract_address:
@@ -314,6 +344,28 @@ definitions:
       token:
         type: string
     type: object
+  model.TrendData:
+    properties:
+      count:
+        type: integer
+      date:
+        type: string
+    type: object
+  model.TrendsData:
+    properties:
+      comments:
+        items:
+          $ref: '#/definitions/model.TrendData'
+        type: array
+      posts:
+        items:
+          $ref: '#/definitions/model.TrendData'
+        type: array
+      users:
+        items:
+          $ref: '#/definitions/model.TrendData'
+        type: array
+    type: object
   model.UpdateBadgeRequest:
     properties:
       contract_address:
@@ -396,6 +448,13 @@ definitions:
     required:
     - role
     type: object
+  model.UpdateUserStatusRequest:
+    properties:
+      is_active:
+        type: boolean
+    required:
+    - is_active
+    type: object
   model.User:
     properties:
       avatar:
@@ -408,6 +467,8 @@ definitions:
         type: boolean
       id:
         type: integer
+      is_active:
+        type: boolean
       nickname:
         type: string
       role:
@@ -974,20 +1035,7 @@ paths:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  properties:
-                    badge_count:
-                      type: integer
-                    category_count:
-                      type: integer
-                    comment_count:
-                      type: integer
-                    post_count:
-                      type: integer
-                    tag_count:
-                      type: integer
-                    user_count:
-                      type: integer
-                  type: object
+                  $ref: '#/definitions/model.AdminStats'
               type: object
         "401":
           description: Unauthorized
@@ -1143,6 +1191,51 @@ paths:
       security:
       - BearerAuth: []
       summary: 管理员更新用户角色
+      tags:
+      - 认证
+  /auth/users/{id}/status:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 启用状态
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateUserStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 管理员启用/禁用用户
       tags:
       - 认证
   /auth/verify-email:

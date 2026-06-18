@@ -19,7 +19,7 @@ func TestUserService_Register(t *testing.T) {
 	svc := NewUserService()
 	resp, err := svc.Register(model.RegisterRequest{
 		Username: "alice",
-		Password: "123456",
+		Password: "Pass1234",
 		Nickname: "Alice",
 		Email:    "alice@example.com",
 	})
@@ -36,7 +36,7 @@ func TestUserService_Register(t *testing.T) {
 	// 重复注册应失败
 	_, err = svc.Register(model.RegisterRequest{
 		Username: "alice",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err == nil {
 		t.Error("重复注册应返回错误")
@@ -52,7 +52,7 @@ func TestUserService_Login(t *testing.T) {
 	svc := NewUserService()
 	if _, err := svc.Register(model.RegisterRequest{
 		Username: "bob",
-		Password: "123456",
+		Password: "Pass1234",
 	}); err != nil {
 		t.Fatalf("注册失败: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestUserService_Login(t *testing.T) {
 	// 正确密码登录
 	resp, err := svc.Login(model.LoginRequest{
 		Username: "bob",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err != nil {
 		t.Fatalf("登录失败: %v", err)
@@ -81,7 +81,7 @@ func TestUserService_Login(t *testing.T) {
 	// 不存在的用户
 	_, err = svc.Login(model.LoginRequest{
 		Username: "notexist",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err == nil {
 		t.Error("不存在用户应登录失败")
@@ -97,7 +97,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 	svc := NewUserService()
 	resp, err := svc.Register(model.RegisterRequest{
 		Username: "carol",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err != nil {
 		t.Fatalf("注册失败: %v", err)
@@ -127,26 +127,26 @@ func TestUserService_ChangePassword(t *testing.T) {
 	svc := NewUserService()
 	resp, err := svc.Register(model.RegisterRequest{
 		Username: "dave",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err != nil {
 		t.Fatalf("注册失败: %v", err)
 	}
 
 	// 原密码错误
-	if err := svc.ChangePassword(resp.User.ID, "wrong", "newpass"); err == nil {
+	if err := svc.ChangePassword(resp.User.ID, "wrong", "NewPass5678"); err == nil {
 		t.Error("原密码错误时应失败")
 	}
 
 	// 正确修改密码
-	if err := svc.ChangePassword(resp.User.ID, "123456", "newpass"); err != nil {
+	if err := svc.ChangePassword(resp.User.ID, "Pass1234", "NewPass5678"); err != nil {
 		t.Fatalf("修改密码失败: %v", err)
 	}
 
 	// 旧密码已无法登录
 	_, err = svc.Login(model.LoginRequest{
 		Username: "dave",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err == nil {
 		t.Error("旧密码应无法登录")
@@ -155,7 +155,7 @@ func TestUserService_ChangePassword(t *testing.T) {
 	// 新密码可登录
 	_, err = svc.Login(model.LoginRequest{
 		Username: "dave",
-		Password: "newpass",
+		Password: "NewPass5678",
 	})
 	if err != nil {
 		t.Errorf("新密码应可登录: %v", err)
@@ -171,7 +171,7 @@ func TestUserService_UpdateRoleAndDelete(t *testing.T) {
 	svc := NewUserService()
 	resp, err := svc.Register(model.RegisterRequest{
 		Username: "eve",
-		Password: "123456",
+		Password: "Pass1234",
 	})
 	if err != nil {
 		t.Fatalf("注册失败: %v", err)
@@ -192,5 +192,29 @@ func TestUserService_UpdateRoleAndDelete(t *testing.T) {
 	_, err = svc.GetUserDetail(resp.User.ID)
 	if err == nil {
 		t.Error("删除后应查不到用户")
+	}
+}
+
+func TestUserService_Register_WeakPassword(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	config.C = config.DefaultConfig()
+	svc := NewUserService()
+
+	cases := []string{
+		"123",
+		"onlylowercase",
+		"ONLYUPPERCASE",
+		"NoDigitsHere",
+	}
+	for _, pwd := range cases {
+		_, err := svc.Register(model.RegisterRequest{
+			Username: "weakuser_" + pwd,
+			Password: pwd,
+		})
+		if err == nil {
+			t.Errorf("密码 %q 应校验失败", pwd)
+		}
 	}
 }

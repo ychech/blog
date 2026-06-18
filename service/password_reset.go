@@ -84,8 +84,8 @@ func ResetPassword(token, newPassword string) error {
 	if token == "" {
 		return fmt.Errorf("重置令牌不能为空")
 	}
-	if len(newPassword) < 6 {
-		return fmt.Errorf("新密码不能少于 6 位")
+	if err := utils.ValidatePasswordStrength(newPassword); err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

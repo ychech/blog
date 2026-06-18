@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"errors"
+	"unicode"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -16,4 +19,35 @@ func HashPassword(password string) (string, error) {
 func CheckPassword(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+// ValidatePasswordStrength 校验密码强度。
+// 要求：长度 6-32，且同时包含大写字母、小写字母和数字。
+func ValidatePasswordStrength(password string) error {
+	if len(password) < 6 || len(password) > 32 {
+		return errors.New("密码长度必须在 6-32 位之间")
+	}
+
+	var hasUpper, hasLower, hasDigit bool
+	for _, r := range password {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		}
+	}
+
+	if !hasUpper {
+		return errors.New("密码必须包含至少一个大写字母")
+	}
+	if !hasLower {
+		return errors.New("密码必须包含至少一个小写字母")
+	}
+	if !hasDigit {
+		return errors.New("密码必须包含至少一个数字")
+	}
+	return nil
 }

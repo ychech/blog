@@ -81,6 +81,7 @@ func Setup() *gin.Engine {
 		auth.GET("/users", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminListUsers)
 		auth.GET("/users/:id", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetUser)
 		auth.PUT("/users/:id/role", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminUpdateUserRole)
+		auth.PUT("/users/:id/status", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminUpdateUserStatus)
 		auth.DELETE("/users/:id", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminDeleteUser)
 		auth.GET("/stats", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetStats)
 	}

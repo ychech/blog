@@ -27,6 +27,7 @@ type User struct {
 	EmailVerified  bool           `json:"email_verified" gorm:"default:false"`
 	Avatar         string         `json:"avatar" gorm:"size:255"`
 	Role           UserRole       `json:"role" gorm:"size:20;default:user"`
+	IsActive       bool           `json:"is_active" gorm:"default:true;index"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
@@ -248,6 +249,11 @@ type UpdateUserRoleRequest struct {
 	Role UserRole `json:"role" binding:"required,oneof=admin user"`
 }
 
+// UpdateUserStatusRequest 更新用户启用状态请求（管理员）
+type UpdateUserStatusRequest struct {
+	IsActive bool `json:"is_active" binding:"required"`
+}
+
 // VerifyEmailRequest 邮箱验证码验证请求
 type VerifyEmailRequest struct {
 	Code string `json:"code" binding:"required"`
@@ -271,6 +277,37 @@ type LoginResponse struct {
 // TokenResponse Token 刷新响应
 type TokenResponse struct {
 	Token string `json:"token"`
+}
+
+// TrendData 趋势数据点
+type TrendData struct {
+	Date  string `json:"date"`
+	Count int64  `json:"count"`
+}
+
+// AdminStats 后台仪表盘统计
+type AdminStats struct {
+	Counts CountsData    `json:"counts"`
+	Trends TrendsData    `json:"trends"`
+	HotPosts []Post      `json:"hot_posts"`
+	TopTags  []Tag       `json:"top_tags"`
+}
+
+// CountsData 各类资源总数
+type CountsData struct {
+	Users    int64 `json:"users"`
+	Posts    int64 `json:"posts"`
+	Comments int64 `json:"comments"`
+	Categories int64 `json:"categories"`
+	Tags     int64 `json:"tags"`
+	Badges   int64 `json:"badges"`
+}
+
+// TrendsData 近 7 天趋势
+type TrendsData struct {
+	Users    []TrendData `json:"users"`
+	Posts    []TrendData `json:"posts"`
+	Comments []TrendData `json:"comments"`
 }
 
 // CreatePostRequest 创建文章请求

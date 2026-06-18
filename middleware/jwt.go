@@ -50,6 +50,14 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		// 校验用户账号是否被禁用
+		isActive, err := service.CheckUserActive(claims.UserID)
+		if err != nil || !isActive {
+			utils.Unauthorized(c, "账号已被禁用")
+			c.Abort()
+			return
+		}
+
 		// 将用户信息存入 context，后续 handler 可以通过 c.GetUint("userID") 获取
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)

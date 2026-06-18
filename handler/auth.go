@@ -400,12 +400,12 @@ func (h *AuthHandler) AdminListUsers(c *gin.Context) {
 // @Tags 认证
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} utils.Response{data=object{user_count=int,post_count=int,comment_count=int,category_count=int,tag_count=int,badge_count=int}}
+// @Success 200 {object} utils.Response{data=model.AdminStats}
 // @Failure 401 {object} utils.Response
 // @Failure 403 {object} utils.Response
 // @Router /auth/stats [get]
 func (h *AuthHandler) AdminGetStats(c *gin.Context) {
-	stats, err := h.userService.GetStats()
+	stats, err := service.GetAdminStats()
 	if err != nil {
 		utils.InternalError(c, err.Error())
 		return
@@ -468,6 +468,41 @@ func (h *AuthHandler) AdminUpdateUserRole(c *gin.Context) {
 	}
 
 	user, err := h.userService.UpdateRole(uint(id), req.Role)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, user)
+}
+
+// AdminUpdateUserStatus 管理员启用/禁用用户
+// @Summary 管理员启用/禁用用户
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "用户 ID"
+// @Param body body model.UpdateUserStatusRequest true "启用状态"
+// @Success 200 {object} utils.Response{data=model.User}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /auth/users/{id}/status [put]
+func (h *AuthHandler) AdminUpdateUserStatus(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.BadRequest(c, "用户 ID 格式错误")
+		return
+	}
+
+	var req model.UpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	user, err := h.userService.UpdateStatus(uint(id), req.IsActive)
 	if err != nil {
 		utils.Error(c, utils.CodeBusinessError, err.Error())
 		return

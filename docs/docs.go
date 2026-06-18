@@ -840,27 +840,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "badge_count": {
-                                                    "type": "integer"
-                                                },
-                                                "category_count": {
-                                                    "type": "integer"
-                                                },
-                                                "comment_count": {
-                                                    "type": "integer"
-                                                },
-                                                "post_count": {
-                                                    "type": "integer"
-                                                },
-                                                "tag_count": {
-                                                    "type": "integer"
-                                                },
-                                                "user_count": {
-                                                    "type": "integer"
-                                                }
-                                            }
+                                            "$ref": "#/definitions/model.AdminStats"
                                         }
                                     }
                                 }
@@ -1079,6 +1059,81 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/model.UpdateUserRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/users/{id}/status": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "管理员启用/禁用用户",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "用户 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "启用状态",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateUserStatusRequest"
                         }
                     }
                 ],
@@ -3166,6 +3221,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "model.AdminStats": {
+            "type": "object",
+            "properties": {
+                "counts": {
+                    "$ref": "#/definitions/model.CountsData"
+                },
+                "hot_posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Post"
+                    }
+                },
+                "top_tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                },
+                "trends": {
+                    "$ref": "#/definitions/model.TrendsData"
+                }
+            }
+        },
         "model.AwardBadgeRequest": {
             "type": "object",
             "required": [
@@ -3325,6 +3403,29 @@ const docTemplate = `{
                 "CommentReportStatusApproved",
                 "CommentReportStatusRejected"
             ]
+        },
+        "model.CountsData": {
+            "type": "object",
+            "properties": {
+                "badges": {
+                    "type": "integer"
+                },
+                "categories": {
+                    "type": "integer"
+                },
+                "comments": {
+                    "type": "integer"
+                },
+                "posts": {
+                    "type": "integer"
+                },
+                "tags": {
+                    "type": "integer"
+                },
+                "users": {
+                    "type": "integer"
+                }
+            }
         },
         "model.CreateBadgeRequest": {
             "type": "object",
@@ -3635,6 +3736,40 @@ const docTemplate = `{
                 }
             }
         },
+        "model.TrendData": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TrendsData": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TrendData"
+                    }
+                },
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TrendData"
+                    }
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TrendData"
+                    }
+                }
+            }
+        },
         "model.UpdateBadgeRequest": {
             "type": "object",
             "properties": {
@@ -3765,6 +3900,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.UpdateUserStatusRequest": {
+            "type": "object",
+            "required": [
+                "is_active"
+            ],
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                }
+            }
+        },
         "model.User": {
             "type": "object",
             "properties": {
@@ -3782,6 +3928,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
                 },
                 "nickname": {
                     "type": "string"

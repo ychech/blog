@@ -23,6 +23,10 @@ func NewUserService() *UserService {
 
 // Register 用户注册
 func (s *UserService) Register(req model.RegisterRequest) (*model.LoginResponse, error) {
+	if err := utils.ValidatePasswordStrength(req.Password); err != nil {
+		return nil, err
+	}
+
 	// 密码加密
 	hashedPwd, err := utils.HashPassword(req.Password)
 	if err != nil {
@@ -64,6 +68,10 @@ func (s *UserService) Login(req model.LoginRequest) (*model.LoginResponse, error
 
 	if !utils.CheckPassword(req.Password, user.Password) {
 		return nil, errors.New("用户不存在或密码错误")
+	}
+
+	if !user.IsActive {
+		return nil, errors.New("账号已被禁用，请联系管理员")
 	}
 
 	// 如果配置要求必须验证邮箱，则未验证用户禁止登录
@@ -177,6 +185,10 @@ func (s *UserService) GetStats() (gin.H, error) {
 
 // ChangePassword 修改当前用户密码
 func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) error {
+	if err := utils.ValidatePasswordStrength(newPassword); err != nil {
+		return err
+	}
+
 	var user model.User
 	if err := database.DB.First(&user, id).Error; err != nil {
 		return err
@@ -223,6 +235,33 @@ func (s *UserService) UpdateRole(id uint, role model.UserRole) (*model.User, err
 // DeleteUser 删除用户（管理员使用，软删除）
 func (s *UserService) DeleteUser(id uint) error {
 	return database.DB.Delete(&model.User{}, id).Error
+}
+
+// CheckUserActive 检查用户是否处于启用状态。
+func (s *UserService) CheckUserActive(id uint) (bool, error) {
+	var user model.User
+	if err := database.DB.Select("is_active").First(&user, id).Error; err != nil {
+		return false, err
+	}
+	return user.IsActive, nil
+}
+
+// CheckUserActive 检查用户是否处于启用状态（包级便捷函数）。
+func CheckUserActive(id uint) (bool, error) {
+	return NewUserService().CheckUserActive(id)
+}
+
+// UpdateStatus 更新用户启用状态（管理员使用）
+func (s *UserService) UpdateStatus(id uint, isActive bool) (*model.User, error) {
+	var user model.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		return nil, err
+	}
+
+	if err := database.DB.Model(&user).Update("is_active", isActive).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 // UpdateProfile 更新当前用户资料
