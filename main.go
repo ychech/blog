@@ -83,6 +83,9 @@ func main() {
 		utils.Logger.Warnf("Meilisearch 初始化失败（非致命）: %v", err)
 	}
 
+	// 启动 WebSocket 实时通知 Hub
+	service.StartNotificationHub()
+
 	// 注册路由并获取 Gin 引擎实例
 	r := router.Setup()
 
@@ -118,6 +121,9 @@ func main() {
 	// 取消后台任务，触发最后一次浏览量同步，并等待同步完成
 	bgCancel()
 	stopViewCountSync()
+
+	// 关闭 WebSocket Hub，停止接收新连接并等待事件循环退出
+	service.StopNotificationHub()
 
 	// 设置 5 秒超时，强制关闭未完成的请求
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

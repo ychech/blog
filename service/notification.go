@@ -15,19 +15,24 @@ import (
 	"fmt"
 )
 
-// CreateNotification 创建一条通用通知。
+// CreateNotification 创建一条通用通知，并在写入成功后尝试实时推送给在线用户。
 func CreateNotification(userID uint, nType model.NotificationType, title, content string, relatedID uint) error {
 	if userID == 0 {
 		return nil
 	}
-	return database.DB.Create(&model.Notification{
+	notification := &model.Notification{
 		UserID:    userID,
 		Type:      nType,
 		Title:     title,
 		Content:   content,
 		RelatedID: relatedID,
 		IsRead:    false,
-	}).Error
+	}
+	if err := database.DB.Create(notification).Error; err != nil {
+		return err
+	}
+	NotifyUserRealtime(userID, notification)
+	return nil
 }
 
 // CreateCommentReplyNotification 创建评论回复通知。

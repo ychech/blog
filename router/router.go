@@ -50,6 +50,9 @@ func Setup() *gin.Engine {
 	// Swagger API 文档（访问 /swagger/index.html）
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// WebSocket 实时通知通道（token 通过 query 参数传递）
+	r.GET("/ws/notifications", handler.NotificationWebSocket)
+
 	// 初始化各模块的 HTTP 处理器
 	authHandler := handler.NewAuthHandler()
 	postHandler := handler.NewPostHandler()
