@@ -111,6 +111,8 @@ func Setup() *gin.Engine {
 	{
 		// 文章管理
 		authorized.POST("/posts", postHandler.Create)
+		authorized.POST("/posts/drafts", postHandler.SaveDraft)
+		authorized.GET("/posts/drafts", postHandler.GetDraft)
 		authorized.PUT("/posts/:id", postHandler.Update)
 		authorized.DELETE("/posts/:id", postHandler.Delete)
 

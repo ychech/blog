@@ -51,7 +51,65 @@ func (h *PostHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// 创建成功后清除草稿
+	_ = service.ClearPostDraft(userID)
+
 	utils.SuccessWithStatus(c, http.StatusCreated, post)
+}
+
+// SaveDraft 自动保存文章草稿（需要登录）。
+// @Summary 保存文章草稿
+// @Tags 文章
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.CreatePostRequest true "草稿内容"
+// @Success 200 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /posts/drafts [post]
+func (h *PostHandler) SaveDraft(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	var req model.CreatePostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := service.SavePostDraft(userID, &req); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "草稿保存成功"})
+}
+
+// GetDraft 获取当前登录用户的文章草稿（需要登录）。
+// @Summary 获取文章草稿
+// @Tags 文章
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response{data=model.CreatePostRequest}
+// @Failure 401 {object} utils.Response
+// @Router /posts/drafts [get]
+func (h *PostHandler) GetDraft(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	draft, err := service.GetPostDraft(userID)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, "暂无草稿或读取失败")
+		return
+	}
+
+	utils.Success(c, draft)
 }
 
 // List 获取文章列表
