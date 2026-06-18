@@ -422,6 +422,26 @@ paths:
         in: query
         name: page_size
         type: integer
+      - description: 动作，如 CREATE/UPDATE/DELETE
+        in: query
+        name: action
+        type: string
+      - description: 资源，如 post/user/category
+        in: query
+        name: resource
+        type: string
+      - description: 操作人用户 ID
+        in: query
+        name: user_id
+        type: integer
+      - description: 开始时间，RFC3339 或 2006-01-02
+        in: query
+        name: start_time
+        type: string
+      - description: 结束时间，RFC3339 或 2006-01-02
+        in: query
+        name: end_time
+        type: string
       produces:
       - application/json
       responses:

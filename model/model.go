@@ -316,6 +316,17 @@ type UpdateCommentRequest struct {
 	Content string `json:"content" binding:"required"`
 }
 
+// AuditLogQuery 审计日志查询参数
+type AuditLogQuery struct {
+	Page      int       `form:"page"`
+	PageSize  int       `form:"page_size"`
+	Action    string    `form:"action"`
+	Resource  string    `form:"resource"`
+	UserID    uint      `form:"user_id"`
+	StartTime time.Time `form:"-"`
+	EndTime   time.Time `form:"-"`
+}
+
 // Pagination 分页参数
 type Pagination struct {
 	Page     int `form:"page"`

@@ -4,9 +4,10 @@
 package handler
 
 import (
+	"blog/model"
 	"blog/service"
 	"blog/utils"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,17 +27,46 @@ func NewAdminHandler() *AdminHandler {
 // @Security BearerAuth
 // @Param page query int false "页码"
 // @Param page_size query int false "每页数量"
+// @Param action query string false "动作，如 CREATE/UPDATE/DELETE"
+// @Param resource query string false "资源，如 post/user/category"
+// @Param user_id query int false "操作人用户 ID"
+// @Param start_time query string false "开始时间，RFC3339 或 2006-01-02"
+// @Param end_time query string false "结束时间，RFC3339 或 2006-01-02"
 // @Success 200 {object} utils.Response{data=model.ListResponse}
 // @Router /api/audit-logs [get]
 func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	var query model.AuditLogQuery
+	_ = c.ShouldBindQuery(&query)
 
-	resp, err := service.ListAuditLogs(page, pageSize)
+	query.StartTime = parseTimeParam(c.Query("start_time"))
+	query.EndTime = parseTimeParam(c.Query("end_time"))
+
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.PageSize <= 0 {
+		query.PageSize = 20
+	}
+
+	resp, err := service.ListAuditLogs(query)
 	if err != nil {
 		utils.Error(c, utils.CodeInternalError, err.Error())
 		return
 	}
 
 	utils.Success(c, resp)
+}
+
+func parseTimeParam(value string) time.Time {
+	if value == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		return t
+	}
+	// 支持日期简写，解析为当天开始
+	if t, err := time.Parse("2006-01-02", value); err == nil {
+		return t
+	}
+	return time.Time{}
 }
