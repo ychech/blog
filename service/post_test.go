@@ -65,3 +65,45 @@ func TestPostService_Create_Validation(t *testing.T) {
 		t.Errorf("标题被错误修改: %s", post.Title)
 	}
 }
+
+func TestPostService_BatchDelete(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	user := model.User{Username: "batchuser", Password: "hash"}
+	if err := database.DB.Create(&user).Error; err != nil {
+		t.Fatalf("创建用户失败: %v", err)
+	}
+	category := model.Category{Name: "batchcat"}
+	if err := database.DB.Create(&category).Error; err != nil {
+		t.Fatalf("创建分类失败: %v", err)
+	}
+
+	var ids []uint
+	for i := 0; i < 3; i++ {
+		post := model.Post{
+			Title:      "batchpost",
+			Content:    "content",
+			AuthorID:   user.ID,
+			CategoryID: &category.ID,
+			Status:     model.PostStatusPublished,
+		}
+		if err := database.DB.Create(&post).Error; err != nil {
+			t.Fatalf("创建文章失败: %v", err)
+		}
+		ids = append(ids, post.ID)
+	}
+
+	svc := NewPostService()
+	if err := svc.BatchDelete(ids); err != nil {
+		t.Fatalf("批量删除失败: %v", err)
+	}
+
+	var remaining int64
+	if err := database.DB.Model(&model.Post{}).Count(&remaining).Error; err != nil {
+		t.Fatalf("统计失败: %v", err)
+	}
+	if remaining != 0 {
+		t.Errorf("批量删除后应无文章，剩余 %d", remaining)
+	}
+}

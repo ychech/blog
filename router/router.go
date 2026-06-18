@@ -164,6 +164,9 @@ func Setup() *gin.Engine {
 		admin.PUT("/tags/:id", tagHandler.Update)
 		admin.DELETE("/tags/:id", tagHandler.Delete)
 
+		// 文章批量操作
+		admin.POST("/posts/batch-delete", postHandler.BatchDelete)
+
 		// 评论管理：管理员可删除/置顶/加精任意评论
 		admin.DELETE("/comments/:id", commentHandler.Delete)
 		admin.PUT("/comments/:id/pin", commentHandler.PinComment)
@@ -184,6 +187,9 @@ func Setup() *gin.Engine {
 		admin.GET("/comment-reports", commentReportHandler.List)
 		admin.PUT("/comment-reports/:id/status", commentReportHandler.UpdateStatus)
 	}
+
+	// 动态 Feed（需登录）
+	authorized.GET("/feed", postHandler.Feed)
 
 	// 私信路由（需登录）
 	authorized.POST("/messages", messageHandler.Send)

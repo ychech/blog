@@ -125,7 +125,7 @@ func (s *PostService) List(query model.PostQuery, currentUserID uint, isAdmin bo
 	// Meilisearch 只负责召回候选 ID，真正的状态/分类/标签过滤仍由数据库完成，
 	// 避免搜索路径绕过原有筛选条件。
 	if keyword := strings.TrimSpace(query.Keyword); keyword != "" {
-		if ids, _, err := SearchPostIDs(keyword, 1000); err == nil {
+		if ids, _, err := SearchPostIDs(keyword, query, 1000); err == nil {
 			if len(ids) == 0 {
 				return &model.ListResponse{
 					Total: 0,
@@ -151,6 +151,18 @@ func (s *PostService) List(query model.PostQuery, currentUserID uint, isAdmin bo
 	if query.TagID > 0 {
 		db = db.Joins("JOIN post_tags ON post_tags.post_id = posts.id").
 			Where("post_tags.tag_id = ?", query.TagID)
+	}
+
+	// 按发布时间范围筛选
+	if query.DateFrom != "" {
+		if t, err := time.Parse("2006-01-02", query.DateFrom); err == nil {
+			db = db.Where("created_at >= ?", t)
+		}
+	}
+	if query.DateTo != "" {
+		if t, err := time.Parse("2006-01-02", query.DateTo); err == nil {
+			db = db.Where("created_at <= ?", t.Add(24*time.Hour))
+		}
 	}
 
 	// 排序
@@ -327,6 +339,22 @@ func (s *PostService) Update(id, currentUserID uint, isAdmin bool, req model.Upd
 	ClearPostCache(id)
 	// 更新者可以查看返回结果
 	return s.GetByID(id, currentUserID, isAdmin)
+}
+
+// BatchDelete 批量删除文章（管理员）。
+func (s *PostService) BatchDelete(ids []uint) error {
+	if len(ids) == 0 {
+		return fmt.Errorf("未指定要删除的文章")
+	}
+	if err := database.DB.Where("id IN ?", ids).Delete(&model.Post{}).Error; err != nil {
+		return err
+	}
+	for _, id := range ids {
+		go DeletePostIndex(id)
+		ClearPostCache(id)
+	}
+	ClearHotPostsCache()
+	return nil
 }
 
 // Delete 删除文章。管理员可删除任意文章，普通用户只能删除自己的文章。

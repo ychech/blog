@@ -346,6 +346,8 @@ type PostQuery struct {
 	TagID      uint       `form:"tag_id"`
 	Status     PostStatus `form:"status"`   // draft / published / 空（默认只看已发布）
 	OrderBy    string     `form:"order_by"` // created_at / view_count
+	DateFrom   string     `form:"date_from"` // 开始日期，格式 2006-01-02
+	DateTo     string     `form:"date_to"`   // 结束日期，格式 2006-01-02
 }
 
 // CreateCategoryRequest 创建分类请求
@@ -403,6 +405,11 @@ type CreateCommentReportRequest struct {
 // UpdateCommentReportStatusRequest 更新举报状态请求
 type UpdateCommentReportStatusRequest struct {
 	Status CommentReportStatus `json:"status" binding:"required,oneof=pending approved rejected"`
+}
+
+// BatchDeleteRequest 批量删除请求
+type BatchDeleteRequest struct {
+	IDs []uint `json:"ids" binding:"required,min=1,max=100"`
 }
 
 // Message 站内私信模型

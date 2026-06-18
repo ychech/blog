@@ -123,6 +123,8 @@ func (h *PostHandler) GetDraft(c *gin.Context) {
 // @Param tag_id query int false "标签 ID"
 // @Param status query string false "状态：draft/published"
 // @Param order_by query string false "排序：created_at/view_count"
+// @Param date_from query string false "开始日期 2006-01-02"
+// @Param date_to query string false "结束日期 2006-01-02"
 // @Success 200 {object} utils.Response{data=model.ListResponse}
 // @Router /posts [get]
 func (h *PostHandler) List(c *gin.Context) {
@@ -385,6 +387,62 @@ func (h *PostHandler) ListFavorites(c *gin.Context) {
 	}
 
 	utils.Success(c, resp)
+}
+
+// Feed 获取当前用户的动态 Feed（自己 + 关注用户的文章，需要登录）。
+// @Summary 用户动态 Feed
+// @Tags 文章
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} utils.Response{data=model.ListResponse}
+// @Failure 401 {object} utils.Response
+// @Router /feed [get]
+func (h *PostHandler) Feed(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	resp, err := service.GetUserFeed(userID, page, pageSize)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, resp)
+}
+
+// BatchDelete 批量删除文章（管理员）。
+// @Summary 批量删除文章
+// @Tags 管理后台
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body model.BatchDeleteRequest true "文章 ID 列表"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /admin/posts/batch-delete [post]
+func (h *PostHandler) BatchDelete(c *gin.Context) {
+	var req model.BatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.service.BatchDelete(req.IDs); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "批量删除成功"})
 }
 
 // ListReadHistory 获取当前用户阅读历史（需要登录）。

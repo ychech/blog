@@ -52,6 +52,17 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.BatchDeleteRequest:
+    properties:
+      ids:
+        items:
+          type: integer
+        maxItems: 100
+        minItems: 1
+        type: array
+    required:
+    - ids
+    type: object
   model.Category:
     properties:
       created_at:
@@ -752,6 +763,41 @@ paths:
       summary: 置顶/取消置顶评论
       tags:
       - 评论
+  /admin/posts/batch-delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 文章 ID 列表
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.BatchDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 批量删除文章
+      tags:
+      - 管理后台
   /api/audit-logs:
     get:
       parameters:
@@ -2055,6 +2101,38 @@ paths:
       summary: 批量获取评论点赞状态
       tags:
       - 评论点赞
+  /feed:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 用户动态 Feed
+      tags:
+      - 文章
   /messages:
     post:
       consumes:
@@ -2328,6 +2406,14 @@ paths:
       - description: 排序：created_at/view_count
         in: query
         name: order_by
+        type: string
+      - description: 开始日期 2006-01-02
+        in: query
+        name: date_from
+        type: string
+      - description: 结束日期 2006-01-02
+        in: query
+        name: date_to
         type: string
       produces:
       - application/json
