@@ -82,6 +82,33 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.CommentReport:
+    properties:
+      comment_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      reason:
+        type: string
+      status:
+        $ref: '#/definitions/model.CommentReportStatus'
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.CommentReportStatus:
+    enum:
+    - pending
+    - approved
+    - rejected
+    type: string
+    x-enum-varnames:
+    - CommentReportStatusPending
+    - CommentReportStatusApproved
+    - CommentReportStatusRejected
   model.CreateBadgeRequest:
     properties:
       contract_address:
@@ -106,6 +133,13 @@ definitions:
     required:
     - name
     type: object
+  model.CreateCommentReportRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
   model.CreateCommentRequest:
     properties:
       content:
@@ -126,10 +160,13 @@ definitions:
         type: string
       cover_url:
         type: string
+      publish_at:
+        description: 定时发布时间，status=scheduled 时必填
+        type: string
       status:
         allOf:
         - $ref: '#/definitions/model.PostStatus'
-        description: draft / published，默认 published
+        description: draft / published / scheduled，默认 published
       summary:
         type: string
       tag_ids:
@@ -149,6 +186,13 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  model.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
     type: object
   model.ListResponse:
     properties:
@@ -199,6 +243,8 @@ definitions:
         type: integer
       like_count:
         type: integer
+      publish_at:
+        type: string
       status:
         $ref: '#/definitions/model.PostStatus'
       summary:
@@ -218,10 +264,12 @@ definitions:
     enum:
     - draft
     - published
+    - scheduled
     type: string
     x-enum-varnames:
     - PostStatusDraft
     - PostStatusPublished
+    - PostStatusScheduled
   model.RegisterRequest:
     properties:
       email:
@@ -239,6 +287,17 @@ definitions:
     - password
     - username
     type: object
+  model.ResetPasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
+    type: object
   model.Tag:
     properties:
       created_at:
@@ -248,6 +307,11 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  model.TokenResponse:
+    properties:
+      token:
         type: string
     type: object
   model.UpdateBadgeRequest:
@@ -265,6 +329,18 @@ definitions:
       token_id:
         type: string
     type: object
+  model.UpdateCommentReportStatusRequest:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/model.CommentReportStatus'
+        enum:
+        - pending
+        - approved
+        - rejected
+    required:
+    - status
+    type: object
   model.UpdateCommentRequest:
     properties:
       content:
@@ -279,6 +355,8 @@ definitions:
       content:
         type: string
       cover_url:
+        type: string
+      publish_at:
         type: string
       status:
         $ref: '#/definitions/model.PostStatus'
@@ -411,6 +489,91 @@ info:
   title: 个人博客 API
   version: "1.0"
 paths:
+  /admin/comment-reports:
+    get:
+      parameters:
+      - description: 状态：pending/approved/rejected
+        in: query
+        name: status
+        type: string
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 查询评论举报列表
+      tags:
+      - 评论举报
+  /admin/comment-reports/{id}/status:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 举报 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateCommentReportStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CommentReport'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 审核评论举报
+      tags:
+      - 评论举报
   /api/audit-logs:
     get:
       parameters:
@@ -457,6 +620,49 @@ paths:
       security:
       - BearerAuth: []
       summary: 查询审计日志
+      tags:
+      - 管理后台
+  /audit-logs/export:
+    get:
+      parameters:
+      - description: 动作
+        in: query
+        name: action
+        type: string
+      - description: 资源
+        in: query
+        name: resource
+        type: string
+      - description: 用户 ID
+        in: query
+        name: user_id
+        type: integer
+      - description: 开始时间
+        in: query
+        name: start_time
+        type: string
+      - description: 结束时间
+        in: query
+        name: end_time
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV 文件
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 导出审计日志 CSV
       tags:
       - 管理后台
   /auth/badges:
@@ -515,6 +721,31 @@ paths:
       summary: 修改当前登录用户密码
       tags:
       - 认证
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 邮箱
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: 忘记密码
+      tags:
+      - 认证
   /auth/login:
     post:
       consumes:
@@ -547,6 +778,24 @@ paths:
           schema:
             $ref: '#/definitions/utils.Response'
       summary: 用户登录
+      tags:
+      - 认证
+  /auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 用户登出
       tags:
       - 认证
   /auth/me:
@@ -607,6 +856,29 @@ paths:
       summary: 更新当前登录用户资料
       tags:
       - 认证
+  /auth/refresh:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.TokenResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 刷新 Token
+      tags:
+      - 认证
   /auth/register:
     post:
       consumes:
@@ -639,6 +911,31 @@ paths:
           schema:
             $ref: '#/definitions/utils.Response'
       summary: 用户注册
+      tags:
+      - 认证
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 重置令牌与新密码
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: 重置密码
       tags:
       - 认证
   /auth/send-verification-email:
@@ -1368,6 +1665,47 @@ paths:
       summary: 切换评论点赞状态
       tags:
       - 评论点赞
+  /comments/{id}/reports:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 评论 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 举报原因
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCommentReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CommentReport'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 举报评论
+      tags:
+      - 评论举报
   /comments/likes:
     get:
       parameters:

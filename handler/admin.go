@@ -7,6 +7,11 @@ import (
 	"blog/model"
 	"blog/service"
 	"blog/utils"
+	"bytes"
+	"encoding/csv"
+	"fmt"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -55,6 +60,64 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 	}
 
 	utils.Success(c, resp)
+}
+
+// ExportAuditLogs 导出审计日志为 CSV（管理员）。
+// @Summary 导出审计日志 CSV
+// @Tags 管理后台
+// @Produce text/csv
+// @Security BearerAuth
+// @Param action query string false "动作"
+// @Param resource query string false "资源"
+// @Param user_id query int false "用户 ID"
+// @Param start_time query string false "开始时间"
+// @Param end_time query string false "结束时间"
+// @Success 200 {file} file "CSV 文件"
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /audit-logs/export [get]
+func (h *AdminHandler) ExportAuditLogs(c *gin.Context) {
+	var query model.AuditLogQuery
+	_ = c.ShouldBindQuery(&query)
+
+	query.StartTime = parseTimeParam(c.Query("start_time"))
+	query.EndTime = parseTimeParam(c.Query("end_time"))
+	query.Page = 1
+	query.PageSize = 10000
+
+	resp, err := service.ListAuditLogs(query)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	logs, ok := resp.Data.([]model.AuditLog)
+	if !ok {
+		utils.Error(c, utils.CodeInternalError, "数据格式错误")
+		return
+	}
+
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	_ = writer.Write([]string{"ID", "UserID", "Username", "Action", "Resource", "ResourceID", "Details", "IP", "CreatedAt"})
+	for _, log := range logs {
+		_ = writer.Write([]string{
+			strconv.FormatUint(uint64(log.ID), 10),
+			strconv.FormatUint(uint64(log.UserID), 10),
+			log.Username,
+			log.Action,
+			log.Resource,
+			strconv.FormatUint(uint64(log.ResourceID), 10),
+			log.Details,
+			log.IP,
+			log.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	writer.Flush()
+
+	filename := fmt.Sprintf("audit_logs_%s.csv", time.Now().Format("20060102_150405"))
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
 }
 
 func parseTimeParam(value string) time.Time {

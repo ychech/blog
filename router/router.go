@@ -61,17 +61,22 @@ func Setup() *gin.Engine {
 	badgeHandler := handler.NewBadgeHandler()
 	adminHandler := handler.NewAdminHandler()
 	notificationHandler := handler.NewNotificationHandler()
+	commentReportHandler := handler.NewCommentReportHandler()
 
 	// 认证路由：注册、登录公开；获取/更新当前用户需要登录
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
+		auth.POST("/forgot-password", authHandler.ForgotPassword)
+		auth.POST("/reset-password", authHandler.ResetPassword)
 		auth.GET("/me", middleware.JWTAuth(), authHandler.Me)
 		auth.PUT("/me", middleware.JWTAuth(), authHandler.UpdateProfile)
 		auth.POST("/send-verification-email", middleware.JWTAuth(), authHandler.SendVerificationEmail)
 		auth.POST("/verify-email", middleware.JWTAuth(), authHandler.VerifyEmail)
 		auth.POST("/change-password", middleware.JWTAuth(), authHandler.ChangePassword)
+		auth.POST("/refresh", middleware.JWTAuth(), authHandler.RefreshToken)
+		auth.POST("/logout", middleware.JWTAuth(), authHandler.Logout)
 		auth.GET("/badges", middleware.JWTAuth(), badgeHandler.GetMyBadges)
 		auth.GET("/users", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminListUsers)
 		auth.GET("/users/:id", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetUser)
@@ -111,6 +116,7 @@ func Setup() *gin.Engine {
 		// 评论管理
 		authorized.POST("/comments", commentHandler.Create)
 		authorized.PUT("/comments/:id", commentHandler.Update)
+		authorized.POST("/comments/:id/reports", commentReportHandler.Create)
 
 		// 文件上传
 		authorized.POST("/uploads", uploadHandler.UploadImage)
@@ -149,6 +155,11 @@ func Setup() *gin.Engine {
 
 		// 审计日志
 		admin.GET("/audit-logs", adminHandler.ListAuditLogs)
+		admin.GET("/audit-logs/export", adminHandler.ExportAuditLogs)
+
+		// 评论举报审核
+		admin.GET("/comment-reports", commentReportHandler.List)
+		admin.PUT("/comment-reports/:id/status", commentReportHandler.UpdateStatus)
 	}
 
 	// 通知路由（需登录）

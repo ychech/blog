@@ -3,6 +3,7 @@ package middleware
 
 import (
 	"blog/model"
+	"blog/service"
 	"blog/utils"
 	"strings"
 
@@ -36,10 +37,24 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		// 校验 Token 是否已被拉黑
+		blacklisted, err := service.IsTokenBlacklisted(claims.ID)
+		if err != nil {
+			utils.Unauthorized(c, "Token 校验失败")
+			c.Abort()
+			return
+		}
+		if blacklisted {
+			utils.Unauthorized(c, "Token 已失效")
+			c.Abort()
+			return
+		}
+
 		// 将用户信息存入 context，后续 handler 可以通过 c.GetUint("userID") 获取
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
+		c.Set("jti", claims.ID)
 		c.Next()
 	}
 }

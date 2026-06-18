@@ -87,6 +87,9 @@ func main() {
 	bgCtx, bgCancel := context.WithCancel(context.Background())
 	stopViewCountSync := service.StartViewCountSync(bgCtx)
 
+	// 启动定时发布调度器
+	go service.StartScheduler(bgCtx)
+
 	addr := config.C.Server.ListenAddr()
 	srv := &http.Server{
 		Addr:    addr,

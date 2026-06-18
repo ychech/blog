@@ -131,6 +131,7 @@ func migrate() error {
 		&model.UserBadge{},
 		&model.Notification{},
 		&model.AuditLog{},
+		&model.CommentReport{},
 	)
 }
 

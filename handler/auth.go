@@ -7,7 +7,9 @@ import (
 	"blog/model"
 	"blog/service"
 	"blog/utils"
+	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -164,6 +166,141 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 	}
 
 	utils.Success(c, gin.H{"message": "邮箱验证成功"})
+}
+
+// ForgotPassword 忘记密码：发送重置邮件。
+// @Summary 忘记密码
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Param body body model.ForgotPasswordRequest true "邮箱"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Router /auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req model.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	token, user, err := service.CreatePasswordResetToken(req.Email)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	// 无论邮箱是否存在，都返回相同提示，避免泄露注册信息
+	if user != nil && token != "" {
+		go func() {
+			if err := service.SendPasswordResetEmail(user.Email, token); err != nil {
+				utils.Logger.Errorf("发送密码重置邮件失败: %v", err)
+			}
+		}()
+	}
+
+	utils.Success(c, gin.H{"message": "如果该邮箱已注册，重置链接将发送至邮箱"})
+}
+
+// ResetPassword 重置密码。
+// @Summary 重置密码
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Param body body model.ResetPasswordRequest true "重置令牌与新密码"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Router /auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req model.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := service.ResetPassword(req.Token, req.NewPassword); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "密码重置成功"})
+}
+
+// RefreshToken 刷新当前 Token。
+// 旧 Token 会被加入黑名单，响应中返回新的 access token。
+// @Summary 刷新 Token
+// @Tags 认证
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response{data=model.TokenResponse}
+// @Failure 401 {object} utils.Response
+// @Router /auth/refresh [post]
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	tokenStr, err := extractBearerToken(c)
+	if err != nil {
+		utils.Unauthorized(c, err.Error())
+		return
+	}
+
+	claims, err := utils.ParseToken(tokenStr)
+	if err != nil {
+		utils.Unauthorized(c, "Token 无效或已过期")
+		return
+	}
+
+	newToken, err := utils.GenerateToken(claims.UserID, claims.Username, claims.Role)
+	if err != nil {
+		utils.InternalError(c, err.Error())
+		return
+	}
+
+	// 拉黑旧 Token
+	if err := service.BlacklistToken(claims); err != nil {
+		utils.Logger.Errorf("拉黑旧 Token 失败: %v", err)
+	}
+
+	utils.Success(c, model.TokenResponse{Token: newToken})
+}
+
+// Logout 登出当前用户，将 Token 加入黑名单。
+// @Summary 用户登出
+// @Tags 认证
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	tokenStr, err := extractBearerToken(c)
+	if err != nil {
+		utils.Unauthorized(c, err.Error())
+		return
+	}
+
+	claims, err := utils.ParseToken(tokenStr)
+	if err != nil {
+		utils.Unauthorized(c, "Token 无效或已过期")
+		return
+	}
+
+	if err := service.BlacklistToken(claims); err != nil {
+		utils.InternalError(c, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "登出成功"})
+}
+
+func extractBearerToken(c *gin.Context) (string, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return "", errors.New("缺少 Authorization 请求头")
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+		return "", errors.New("Authorization 格式错误")
+	}
+	return parts[1], nil
 }
 
 // ChangePassword 修改当前登录用户密码

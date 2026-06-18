@@ -58,6 +58,7 @@ type PostStatus string
 const (
 	PostStatusDraft     PostStatus = "draft"
 	PostStatusPublished PostStatus = "published"
+	PostStatusScheduled PostStatus = "scheduled"
 )
 
 // Post 博客文章，对应 posts 表。
@@ -70,6 +71,7 @@ type Post struct {
 	Content    string         `json:"content" gorm:"type:text;not null"`
 	CoverURL   string         `json:"cover_url" gorm:"size:500"`
 	Status     PostStatus     `json:"status" gorm:"size:20;default:published;index"`
+	PublishAt  *time.Time     `json:"publish_at,omitempty" gorm:"index"`
 	AuthorID   uint           `json:"author_id" gorm:"not null"`
 	Author     User           `json:"author,omitempty" gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	CategoryID *uint          `json:"category_id,omitempty"`
@@ -230,6 +232,17 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
+// ForgotPasswordRequest 忘记密码请求
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// ResetPasswordRequest 重置密码请求
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
 // UpdateUserRoleRequest 更新用户角色请求（管理员）
 type UpdateUserRoleRequest struct {
 	Role UserRole `json:"role" binding:"required,oneof=admin user"`
@@ -255,13 +268,19 @@ type LoginResponse struct {
 	User     User   `json:"user"`
 }
 
+// TokenResponse Token 刷新响应
+type TokenResponse struct {
+	Token string `json:"token"`
+}
+
 // CreatePostRequest 创建文章请求
 type CreatePostRequest struct {
 	Title      string     `json:"title" binding:"required"`
 	Summary    string     `json:"summary"`
 	Content    string     `json:"content" binding:"required"`
 	CoverURL   string     `json:"cover_url"`
-	Status     PostStatus `json:"status"` // draft / published，默认 published
+	Status     PostStatus `json:"status"`            // draft / published / scheduled，默认 published
+	PublishAt  *time.Time `json:"publish_at"`        // 定时发布时间，status=scheduled 时必填
 	CategoryID uint       `json:"category_id" binding:"required"`
 	TagIDs     []uint     `json:"tag_ids"`
 }
@@ -274,6 +293,7 @@ type UpdatePostRequest struct {
 	Content    *string     `json:"content"`
 	CoverURL   *string     `json:"cover_url"`
 	Status     *PostStatus `json:"status"`
+	PublishAt  *time.Time  `json:"publish_at"`
 	CategoryID *uint       `json:"category_id"`
 	TagIDs     []uint      `json:"tag_ids"`
 }
@@ -314,6 +334,36 @@ type CreateCommentRequest struct {
 // UpdateCommentRequest 更新评论请求
 type UpdateCommentRequest struct {
 	Content string `json:"content" binding:"required"`
+}
+
+// CommentReportStatus 举报状态
+type CommentReportStatus string
+
+const (
+	CommentReportStatusPending  CommentReportStatus = "pending"
+	CommentReportStatusApproved CommentReportStatus = "approved"
+	CommentReportStatusRejected CommentReportStatus = "rejected"
+)
+
+// CommentReport 评论举报
+type CommentReport struct {
+	ID        uint                `json:"id" gorm:"primaryKey"`
+	CommentID uint                `json:"comment_id" gorm:"not null;index"`
+	UserID    uint                `json:"user_id" gorm:"not null;index"`
+	Reason    string              `json:"reason" gorm:"type:text;not null"`
+	Status    CommentReportStatus `json:"status" gorm:"size:20;default:pending;index"`
+	CreatedAt time.Time           `json:"created_at"`
+	UpdatedAt time.Time           `json:"updated_at"`
+}
+
+// CreateCommentReportRequest 创建评论举报请求
+type CreateCommentReportRequest struct {
+	Reason string `json:"reason" binding:"required"`
+}
+
+// UpdateCommentReportStatusRequest 更新举报状态请求
+type UpdateCommentReportStatusRequest struct {
+	Status CommentReportStatus `json:"status" binding:"required,oneof=pending approved rejected"`
 }
 
 // AuditLogQuery 审计日志查询参数

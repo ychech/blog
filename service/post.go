@@ -5,6 +5,7 @@ import (
 	"blog/model"
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -43,8 +44,16 @@ func (s *PostService) Create(authorID uint, req model.CreatePostRequest) (*model
 	}
 
 	status := req.Status
-	if status != model.PostStatusDraft && status != model.PostStatusPublished {
+	if status != model.PostStatusDraft && status != model.PostStatusPublished && status != model.PostStatusScheduled {
 		status = model.PostStatusPublished
+	}
+	if status == model.PostStatusScheduled {
+		if req.PublishAt == nil {
+			return nil, fmt.Errorf("定时发布必须提供 publish_at")
+		}
+		if req.PublishAt.Before(time.Now()) {
+			return nil, fmt.Errorf("定时发布时间不能早于当前时间")
+		}
 	}
 
 	post := model.Post{
@@ -53,6 +62,7 @@ func (s *PostService) Create(authorID uint, req model.CreatePostRequest) (*model
 		Content:    content,
 		CoverURL:   req.CoverURL,
 		Status:     status,
+		PublishAt:  req.PublishAt,
 		AuthorID:   authorID,
 		CategoryID: &req.CategoryID,
 	}
@@ -257,9 +267,24 @@ func (s *PostService) Update(id, currentUserID uint, isAdmin bool, req model.Upd
 		post.CoverURL = *req.CoverURL
 	}
 	if req.Status != nil {
-		if *req.Status == model.PostStatusDraft || *req.Status == model.PostStatusPublished {
-			post.Status = *req.Status
+		status := *req.Status
+		if status != model.PostStatusDraft && status != model.PostStatusPublished && status != model.PostStatusScheduled {
+			status = model.PostStatusPublished
 		}
+		if status == model.PostStatusScheduled {
+			publishAt := post.PublishAt
+			if req.PublishAt != nil {
+				publishAt = req.PublishAt
+			}
+			if publishAt == nil || publishAt.Before(time.Now()) {
+				return nil, fmt.Errorf("定时发布必须提供未来时间")
+			}
+			post.PublishAt = publishAt
+		}
+		post.Status = status
+	}
+	if req.PublishAt != nil {
+		post.PublishAt = req.PublishAt
 	}
 	if req.CategoryID != nil {
 		var category model.Category

@@ -8,7 +8,13 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/smtp"
+	"strings"
 )
+
+// NormalizeEmail 规范化邮箱地址：去除首尾空格并转为小写。
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
 
 // SendEmail 发送一封邮件。
 //

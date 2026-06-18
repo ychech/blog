@@ -89,7 +89,8 @@ type JWTConfig struct {
 
 // AppConfig 定义应用级别的业务配置。
 type AppConfig struct {
-	UploadPath    string `yaml:"upload_path" json:"upload_path"`       // 上传文件保存目录
+	BaseURL       string `yaml:"base_url" json:"base_url"`               // 应用前端基地址，用于邮件链接
+	UploadPath    string `yaml:"upload_path" json:"upload_path"`         // 上传文件保存目录
 	MaxUploadSize int64  `yaml:"max_upload_size" json:"max_upload_size"` // 最大上传文件大小，单位：MB
 }
 
@@ -158,6 +159,7 @@ const (
 
 	DefaultUploadPath    = "uploads"
 	DefaultMaxUploadSize = 10
+	DefaultAppBaseURL    = "http://localhost:8080"
 
 	DefaultRateLimitEnabled   = true
 	DefaultRateLimitMode      = "memory"
@@ -215,6 +217,7 @@ func defaultConfig() *Config {
 			ExpireHour: DefaultJWTExpireHour,
 		},
 		App: AppConfig{
+			BaseURL:       DefaultAppBaseURL,
 			UploadPath:    DefaultUploadPath,
 			MaxUploadSize: DefaultMaxUploadSize,
 		},
