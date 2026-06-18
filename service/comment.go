@@ -87,7 +87,9 @@ func (s *CommentService) Create(authorID uint, authorName string, req model.Crea
 		var parent model.Comment
 		if err := database.DB.First(&parent, *req.ParentID).Error; err == nil {
 			if parent.AuthorID != authorID {
-				go CreateCommentReplyNotification(parent.AuthorID, comment.ID, authorName, post.Title)
+				notifyAsync(func() error {
+					return CreateCommentReplyNotification(parent.AuthorID, comment.ID, authorName, post.Title)
+				})
 			}
 		}
 	}

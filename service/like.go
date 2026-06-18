@@ -20,6 +20,7 @@ func NewLikeService() *LikeService {
 
 // Toggle 切换点赞状态：已点赞则取消，未点赞则点赞。
 // 使用 INSERT ... ON DUPLICATE KEY UPDATE 原子切换，避免并发重复点赞。
+// 新增点赞时会异步通知文章作者。
 func (s *LikeService) Toggle(postID, userID uint) (bool, error) {
 	var liked bool
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
@@ -41,7 +42,37 @@ func (s *LikeService) Toggle(postID, userID uint) (bool, error) {
 		liked = !final.DeletedAt.Valid
 		return nil
 	})
-	return liked, err
+	if err != nil {
+		return false, err
+	}
+
+	if liked {
+		s.notifyPostAuthor(postID, userID)
+	}
+	return liked, nil
+}
+
+func (s *LikeService) notifyPostAuthor(postID, userID uint) {
+	var post model.Post
+	if err := database.DB.Select("id, title, author_id").First(&post, postID).Error; err != nil {
+		return
+	}
+	if post.AuthorID == userID {
+		return
+	}
+
+	var user model.User
+	if err := database.DB.Select("id, nickname, username").First(&user, userID).Error; err != nil {
+		return
+	}
+
+	nickname := user.Nickname
+	if nickname == "" {
+		nickname = user.Username
+	}
+	notifyAsync(func() error {
+		return CreatePostLikeNotification(post.AuthorID, post.ID, nickname, post.Title)
+	})
 }
 
 // IsLiked 检查用户是否已点赞

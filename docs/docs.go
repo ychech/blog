@@ -2964,6 +2964,12 @@ const docTemplate = `{
                 "summary": "获取通知列表",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "通知类型过滤（如 comment_reply/post_like/follow/message/badge_award）",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "页码",
                         "name": "page",

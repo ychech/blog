@@ -2337,6 +2337,10 @@ paths:
   /notifications:
     get:
       parameters:
+      - description: 通知类型过滤（如 comment_reply/post_like/follow/message/badge_award）
+        in: query
+        name: type
+        type: string
       - description: 页码
         in: query
         name: page

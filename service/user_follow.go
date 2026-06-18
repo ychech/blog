@@ -25,7 +25,23 @@ func FollowUser(followerID, followingID uint) error {
 		}
 		return err
 	}
+
+	notifyFollowNotification(followerID, followingID)
 	return nil
+}
+
+func notifyFollowNotification(followerID, followingID uint) {
+	var follower model.User
+	if err := database.DB.Select("id, nickname, username").First(&follower, followerID).Error; err != nil {
+		return
+	}
+	nickname := follower.Nickname
+	if nickname == "" {
+		nickname = follower.Username
+	}
+	notifyAsync(func() error {
+		return CreateFollowNotification(followingID, followerID, nickname)
+	})
 }
 
 // UnfollowUser 取消关注。

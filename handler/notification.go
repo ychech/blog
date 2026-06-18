@@ -5,6 +5,7 @@ package handler
 
 import (
 	"blog/middleware"
+	"blog/model"
 	"blog/service"
 	"blog/utils"
 	"strconv"
@@ -25,6 +26,7 @@ func NewNotificationHandler() *NotificationHandler {
 // @Tags 通知
 // @Produce json
 // @Security BearerAuth
+// @Param type query string false "通知类型过滤（如 comment_reply/post_like/follow/message/badge_award）"
 // @Param page query int false "页码"
 // @Param page_size query int false "每页数量"
 // @Success 200 {object} utils.Response{data=model.ListResponse}
@@ -36,10 +38,11 @@ func (h *NotificationHandler) List(c *gin.Context) {
 		return
 	}
 
+	notificationType := model.NotificationType(c.DefaultQuery("type", ""))
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 
-	resp, err := service.ListNotifications(userID, page, pageSize)
+	resp, err := service.ListNotifications(userID, notificationType, page, pageSize)
 	if err != nil {
 		utils.Error(c, utils.CodeInternalError, err.Error())
 		return

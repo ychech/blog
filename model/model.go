@@ -128,6 +128,16 @@ type NotificationType string
 const (
 	// NotificationTypeCommentReply 评论回复通知。
 	NotificationTypeCommentReply NotificationType = "comment_reply"
+	// NotificationTypePostLike 文章点赞通知。
+	NotificationTypePostLike NotificationType = "post_like"
+	// NotificationTypeCommentLike 评论点赞通知。
+	NotificationTypeCommentLike NotificationType = "comment_like"
+	// NotificationTypeFollow 被关注通知。
+	NotificationTypeFollow NotificationType = "follow"
+	// NotificationTypeMessage 私信通知。
+	NotificationTypeMessage NotificationType = "message"
+	// NotificationTypeBadgeAward 勋章颁发通知。
+	NotificationTypeBadgeAward NotificationType = "badge_award"
 )
 
 // Notification 通知模型，对应 notifications 表。

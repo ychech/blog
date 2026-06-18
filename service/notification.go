@@ -1,14 +1,34 @@
 // package service 实现通知相关业务逻辑。
 //
 // 当前支持：
-//   - 评论回复通知：当用户 B 回复用户 A 的评论时，向用户 A 发送通知
+//   - 评论回复通知
+//   - 文章/评论点赞通知
+//   - 被关注通知
+//   - 私信通知
+//   - 勋章颁发通知
 package service
 
 import (
 	"blog/database"
 	"blog/model"
+	"blog/utils"
 	"fmt"
 )
+
+// CreateNotification 创建一条通用通知。
+func CreateNotification(userID uint, nType model.NotificationType, title, content string, relatedID uint) error {
+	if userID == 0 {
+		return nil
+	}
+	return database.DB.Create(&model.Notification{
+		UserID:    userID,
+		Type:      nType,
+		Title:     title,
+		Content:   content,
+		RelatedID: relatedID,
+		IsRead:    false,
+	}).Error
+}
 
 // CreateCommentReplyNotification 创建评论回复通知。
 // parentUserID: 被回复评论的作者 ID
@@ -16,26 +36,69 @@ import (
 // replierNickname: 回复者昵称
 // postTitle: 文章标题（用于通知内容）
 func CreateCommentReplyNotification(parentUserID, replyCommentID uint, replierNickname, postTitle string) error {
-	if parentUserID == 0 {
-		return nil
-	}
-
-	notification := model.Notification{
-		UserID:    parentUserID,
-		Type:      model.NotificationTypeCommentReply,
-		Title:     "有人回复了你的评论",
-		Content:   fmt.Sprintf("%s 回复了你在《%s》中的评论", replierNickname, postTitle),
-		RelatedID: replyCommentID,
-		IsRead:    false,
-	}
-
-	return database.DB.Create(&notification).Error
+	return CreateNotification(parentUserID, model.NotificationTypeCommentReply,
+		"有人回复了你的评论",
+		fmt.Sprintf("%s 回复了你在《%s》中的评论", replierNickname, postTitle),
+		replyCommentID)
 }
 
-// ListNotifications 查询指定用户的通知列表。
-func ListNotifications(userID uint, page, pageSize int) (*model.ListResponse, error) {
+// CreatePostLikeNotification 创建文章点赞通知。
+func CreatePostLikeNotification(authorID, postID uint, likerNickname, postTitle string) error {
+	return CreateNotification(authorID, model.NotificationTypePostLike,
+		"有人赞了你的文章",
+		fmt.Sprintf("%s 赞了你的文章《%s》", likerNickname, postTitle),
+		postID)
+}
+
+// CreateCommentLikeNotification 创建评论点赞通知。
+func CreateCommentLikeNotification(authorID, commentID uint, likerNickname string) error {
+	return CreateNotification(authorID, model.NotificationTypeCommentLike,
+		"有人赞了你的评论",
+		fmt.Sprintf("%s 赞了你的评论", likerNickname),
+		commentID)
+}
+
+// CreateFollowNotification 创建被关注通知。
+func CreateFollowNotification(followingID, followerID uint, followerNickname string) error {
+	return CreateNotification(followingID, model.NotificationTypeFollow,
+		"新增关注",
+		fmt.Sprintf("%s 关注了你", followerNickname),
+		followerID)
+}
+
+// CreateMessageNotification 创建私信通知。
+func CreateMessageNotification(receiverID, messageID uint, senderNickname string) error {
+	return CreateNotification(receiverID, model.NotificationTypeMessage,
+		"收到一条新私信",
+		fmt.Sprintf("%s 给你发了一条私信", senderNickname),
+		messageID)
+}
+
+// CreateBadgeAwardNotification 创建勋章颁发通知。
+func CreateBadgeAwardNotification(userID, userBadgeID uint, badgeName string) error {
+	return CreateNotification(userID, model.NotificationTypeBadgeAward,
+		"获得新勋章",
+		fmt.Sprintf("恭喜你获得「%s」勋章", badgeName),
+		userBadgeID)
+}
+
+// notifyAsync 异步创建通知，错误仅记录日志，不阻塞主流程。
+func notifyAsync(fn func() error) {
+	go func() {
+		if err := fn(); err != nil {
+			utils.Logger.Errorf("创建通知失败: %v", err)
+		}
+	}()
+}
+
+// ListNotifications 查询指定用户的通知列表，支持按类型过滤。
+// notificationType 为空字符串时表示全部类型。
+func ListNotifications(userID uint, notificationType model.NotificationType, page, pageSize int) (*model.ListResponse, error) {
 	var total int64
 	query := database.DB.Model(&model.Notification{}).Where("user_id = ?", userID)
+	if notificationType != "" {
+		query = query.Where("type = ?", notificationType)
+	}
 	if err := query.Count(&total).Error; err != nil {
 		return nil, err
 	}

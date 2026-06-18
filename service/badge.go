@@ -137,7 +137,15 @@ func (s *BadgeService) Award(userID, badgeID uint, reason string) (*model.UserBa
 	if err := database.DB.Preload("Badge").First(&userBadge, userBadge.ID).Error; err != nil {
 		return nil, err
 	}
+
+	notifyBadgeAwardNotification(userBadge.UserID, userBadge.ID, userBadge.Badge.Name)
 	return &userBadge, nil
+}
+
+func notifyBadgeAwardNotification(userID, userBadgeID uint, badgeName string) {
+	notifyAsync(func() error {
+		return CreateBadgeAwardNotification(userID, userBadgeID, badgeName)
+	})
 }
 
 // GetUserBadges 获取用户的勋章列表

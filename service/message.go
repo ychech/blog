@@ -36,7 +36,23 @@ func SendMessage(senderID uint, req model.SendMessageRequest) (*model.Message, e
 	if err := database.DB.Create(&msg).Error; err != nil {
 		return nil, err
 	}
+
+	notifyMessageNotification(senderID, receiver.ID, msg.ID)
 	return &msg, nil
+}
+
+func notifyMessageNotification(senderID, receiverID, messageID uint) {
+	var sender model.User
+	if err := database.DB.Select("id, nickname, username").First(&sender, senderID).Error; err != nil {
+		return
+	}
+	nickname := sender.Nickname
+	if nickname == "" {
+		nickname = sender.Username
+	}
+	notifyAsync(func() error {
+		return CreateMessageNotification(receiverID, messageID, nickname)
+	})
 }
 
 // ListConversations 查询当前用户的会话列表。
