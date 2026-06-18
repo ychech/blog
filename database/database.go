@@ -135,6 +135,8 @@ func migrate() error {
 		&model.Message{},
 		&model.Favorite{},
 		&model.ReadHistory{},
+		&model.OAuthAccount{},
+		&model.UserFollow{},
 	)
 }
 

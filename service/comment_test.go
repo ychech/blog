@@ -82,3 +82,52 @@ func TestCommentService_UpdateAndDelete(t *testing.T) {
 
 	_ = child
 }
+
+func TestCommentService_PinAndEssence(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	user := model.User{Username: "moduser", Password: "hash"}
+	if err := database.DB.Create(&user).Error; err != nil {
+		t.Fatalf("创建用户失败: %v", err)
+	}
+	category := model.Category{Name: "modcat"}
+	if err := database.DB.Create(&category).Error; err != nil {
+		t.Fatalf("创建分类失败: %v", err)
+	}
+	post := model.Post{
+		Title:      "modpost",
+		Content:    "content",
+		AuthorID:   user.ID,
+		CategoryID: &category.ID,
+		Status:     model.PostStatusPublished,
+	}
+	if err := database.DB.Create(&post).Error; err != nil {
+		t.Fatalf("创建文章失败: %v", err)
+	}
+	comment := model.Comment{
+		PostID:   post.ID,
+		AuthorID: user.ID,
+		Content:  "comment",
+	}
+	if err := database.DB.Create(&comment).Error; err != nil {
+		t.Fatalf("创建评论失败: %v", err)
+	}
+
+	svc := NewCommentService()
+	pinned, err := svc.PinComment(comment.ID, true)
+	if err != nil {
+		t.Fatalf("置顶失败: %v", err)
+	}
+	if !pinned.IsPinned {
+		t.Error("评论应已置顶")
+	}
+
+	essenced, err := svc.EssenceComment(comment.ID, true)
+	if err != nil {
+		t.Fatalf("加精失败: %v", err)
+	}
+	if !essenced.IsEssence {
+		t.Error("评论应已加精")
+	}
+}

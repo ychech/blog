@@ -31,6 +31,7 @@ func Setup() *gin.Engine {
 	r.Use(middleware.Recovery())
 	r.Use(middleware.Tracing())
 	r.Use(middleware.Logger())
+	r.Use(middleware.Locale())
 	r.Use(middleware.PrometheusMetrics())
 	r.Use(middleware.Cors())
 	r.Use(middleware.RateLimit())
@@ -63,6 +64,8 @@ func Setup() *gin.Engine {
 	notificationHandler := handler.NewNotificationHandler()
 	commentReportHandler := handler.NewCommentReportHandler()
 	messageHandler := handler.NewMessageHandler()
+	oauthHandler := handler.NewOAuthHandler()
+	userFollowHandler := handler.NewUserFollowHandler()
 
 	// 认证路由：注册、登录公开；获取/更新当前用户需要登录
 	auth := r.Group("/api/auth")
@@ -71,6 +74,8 @@ func Setup() *gin.Engine {
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/forgot-password", authHandler.ForgotPassword)
 		auth.POST("/reset-password", authHandler.ResetPassword)
+		auth.GET("/oauth/github", oauthHandler.GitHubLogin)
+		auth.GET("/oauth/github/callback", oauthHandler.GitHubCallback)
 		auth.GET("/me", middleware.JWTAuth(), authHandler.Me)
 		auth.PUT("/me", middleware.JWTAuth(), authHandler.UpdateProfile)
 		auth.POST("/send-verification-email", middleware.JWTAuth(), authHandler.SendVerificationEmail)
@@ -106,11 +111,15 @@ func Setup() *gin.Engine {
 		api.GET("/badges", badgeHandler.List)
 		api.GET("/badges/:id", badgeHandler.Get)
 		api.GET("/users/:id/badges", badgeHandler.GetUserBadges)
+
+		// 用户关注/粉丝
+		api.GET("/users/:id/followers", userFollowHandler.Followers)
+		api.GET("/users/:id/following", userFollowHandler.Following)
 	}
 
 	// 需要登录的 API：所有写操作都需要在请求头携带 Authorization: Bearer <token>
 	authorized := r.Group("/api")
-	authorized.Use(middleware.JWTAuth())
+	authorized.Use(middleware.JWTAuth(), middleware.UserRateLimit())
 	{
 		// 文章管理
 		authorized.POST("/posts", postHandler.Create)
@@ -120,6 +129,10 @@ func Setup() *gin.Engine {
 		authorized.DELETE("/posts/:id/favorite", postHandler.RemoveFavorite)
 		authorized.PUT("/posts/:id", postHandler.Update)
 		authorized.DELETE("/posts/:id", postHandler.Delete)
+
+		// 用户关注
+		authorized.POST("/users/:id/follow", userFollowHandler.Follow)
+		authorized.DELETE("/users/:id/follow", userFollowHandler.Unfollow)
 
 		// 评论管理
 		authorized.POST("/comments", commentHandler.Create)
@@ -151,8 +164,10 @@ func Setup() *gin.Engine {
 		admin.PUT("/tags/:id", tagHandler.Update)
 		admin.DELETE("/tags/:id", tagHandler.Delete)
 
-		// 评论管理：管理员可删除任意评论
+		// 评论管理：管理员可删除/置顶/加精任意评论
 		admin.DELETE("/comments/:id", commentHandler.Delete)
+		admin.PUT("/comments/:id/pin", commentHandler.PinComment)
+		admin.PUT("/comments/:id/essence", commentHandler.EssenceComment)
 
 		// 勋章管理
 		admin.POST("/badges", badgeHandler.Create)
@@ -185,7 +200,7 @@ func Setup() *gin.Engine {
 
 	// 404 兜底处理：所有未匹配的路由返回统一错误
 	r.NoRoute(func(c *gin.Context) {
-		utils.Error(c, utils.CodeNotFound, "接口不存在")
+		utils.Error(c, utils.CodeNotFound, utils.T(utils.GetLocale(c), "route_not_found"))
 	})
 
 	return r

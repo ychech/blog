@@ -41,7 +41,9 @@ type Config struct {
 	Redis            RedisConfig            `yaml:"redis" json:"redis"`                       // Redis 连接配置
 	JWT              JWTConfig              `yaml:"jwt" json:"jwt"`                           // JWT 签名与过期配置
 	App              AppConfig              `yaml:"app" json:"app"`                           // 应用级配置（上传、静态资源等）
+	OAuth            OAuthConfig            `yaml:"oauth" json:"oauth"`                       // 第三方 OAuth2 登录配置
 	RateLimit        RateLimitConfig        `yaml:"rate_limit" json:"rate_limit"`             // 接口限流配置
+	UserRateLimit    UserRateLimitConfig    `yaml:"user_rate_limit" json:"user_rate_limit"`   // 按用户维度限流配置
 	Email            EmailConfig            `yaml:"email" json:"email"`                       // SMTP 邮件配置
 	EmailVerification EmailVerificationConfig `yaml:"email_verification" json:"email_verification"` // 邮箱验证配置
 	Tracing           TracingConfig          `yaml:"tracing" json:"tracing"`                                // 链路追踪配置
@@ -94,6 +96,14 @@ type AppConfig struct {
 	MaxUploadSize int64  `yaml:"max_upload_size" json:"max_upload_size"` // 最大上传文件大小，单位：MB
 }
 
+// OAuthConfig 定义第三方 OAuth2 登录配置。
+type OAuthConfig struct {
+	GitHubEnabled      bool   `yaml:"github_enabled" json:"github_enabled"`           // 是否启用 GitHub 登录
+	GitHubClientID     string `yaml:"github_client_id" json:"github_client_id"`       // GitHub OAuth App Client ID
+	GitHubClientSecret string `yaml:"github_client_secret" json:"github_client_secret"` // GitHub OAuth App Client Secret
+	GitHubRedirectURL  string `yaml:"github_redirect_url" json:"github_redirect_url"`  // GitHub 回调地址
+}
+
 // RateLimitConfig 定义接口限流配置。
 // 基于客户端 IP 进行固定窗口计数，超过阈值后返回 429 Too Many Requests。
 type RateLimitConfig struct {
@@ -101,6 +111,13 @@ type RateLimitConfig struct {
 	Mode      string `yaml:"mode" json:"mode"`           // 限流模式：memory（内存）或 redis（分布式）
 	Requests  int    `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
 	WindowSec int    `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
+}
+
+// UserRateLimitConfig 定义按用户维度的接口限流配置。
+type UserRateLimitConfig struct {
+	Enabled   bool `yaml:"enabled" json:"enabled"`     // 是否启用
+	Requests  int  `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
+	WindowSec int  `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
 }
 
 // EmailConfig 定义 SMTP 邮件发送配置。
@@ -221,11 +238,22 @@ func defaultConfig() *Config {
 			UploadPath:    DefaultUploadPath,
 			MaxUploadSize: DefaultMaxUploadSize,
 		},
+		OAuth: OAuthConfig{
+			GitHubEnabled:      false,
+			GitHubClientID:     "",
+			GitHubClientSecret: "",
+			GitHubRedirectURL:  "http://localhost:8080/api/auth/oauth/github/callback",
+		},
 		RateLimit: RateLimitConfig{
 			Enabled:   DefaultRateLimitEnabled,
 			Mode:      DefaultRateLimitMode,
 			Requests:  DefaultRateLimitRequests,
 			WindowSec: DefaultRateLimitWindowSec,
+		},
+		UserRateLimit: UserRateLimitConfig{
+			Enabled:   false,
+			Requests:  60,
+			WindowSec: 60,
 		},
 		Email: EmailConfig{
 			Port:      DefaultEmailPort,

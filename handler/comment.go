@@ -121,6 +121,64 @@ func (h *CommentHandler) Update(c *gin.Context) {
 	utils.Success(c, comment)
 }
 
+// PinComment 置顶/取消置顶评论（管理员）。
+// @Summary 置顶/取消置顶评论
+// @Tags 评论
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "评论 ID"
+// @Param pinned query bool true "是否置顶"
+// @Success 200 {object} utils.Response{data=model.Comment}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /admin/comments/{id}/pin [put]
+func (h *CommentHandler) PinComment(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		utils.BadRequest(c, "评论 ID 无效")
+		return
+	}
+
+	pinned, _ := strconv.ParseBool(c.DefaultQuery("pinned", "true"))
+	comment, err := h.service.PinComment(uint(id), pinned)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, comment)
+}
+
+// EssenceComment 加精/取消加精评论（管理员）。
+// @Summary 加精/取消加精评论
+// @Tags 评论
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "评论 ID"
+// @Param essence query bool true "是否精华"
+// @Success 200 {object} utils.Response{data=model.Comment}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /admin/comments/{id}/essence [put]
+func (h *CommentHandler) EssenceComment(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		utils.BadRequest(c, "评论 ID 无效")
+		return
+	}
+
+	essence, _ := strconv.ParseBool(c.DefaultQuery("essence", "true"))
+	comment, err := h.service.EssenceComment(uint(id), essence)
+	if err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, comment)
+}
+
 // Delete 删除评论（需要登录；管理员可删除任意评论）
 // @Summary 删除评论
 // @Tags 评论

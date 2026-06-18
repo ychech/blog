@@ -52,6 +52,9 @@ func main() {
 	}
 	config.C = cfg
 
+	// 初始化第三方 OAuth2 登录
+	service.InitGitHubOAuth(config.C.OAuth)
+
 	// 初始化 zap 日志：开发环境彩色输出，并记录调用位置
 	if err := utils.InitLogger(); err != nil {
 		log.Fatalf("日志初始化失败: %v", err)

@@ -87,6 +87,12 @@ definitions:
         type: string
       id:
         type: integer
+      is_essence:
+        description: 是否精华
+        type: boolean
+      is_pinned:
+        description: 是否置顶
+        type: boolean
       like_count:
         type: integer
       parent_id:
@@ -662,6 +668,90 @@ paths:
       summary: 审核评论举报
       tags:
       - 评论举报
+  /admin/comments/{id}/essence:
+    put:
+      parameters:
+      - description: 评论 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 是否精华
+        in: query
+        name: essence
+        required: true
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Comment'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 加精/取消加精评论
+      tags:
+      - 评论
+  /admin/comments/{id}/pin:
+    put:
+      parameters:
+      - description: 评论 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 是否置顶
+        in: query
+        name: pinned
+        required: true
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Comment'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 置顶/取消置顶评论
+      tags:
+      - 评论
   /api/audit-logs:
     get:
       parameters:
@@ -974,6 +1064,53 @@ paths:
       security:
       - BearerAuth: []
       summary: 更新当前登录用户资料
+      tags:
+      - 认证
+  /auth/oauth/github:
+    get:
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: 重定向到 GitHub
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: GitHub 登录跳转
+      tags:
+      - 认证
+  /auth/oauth/github/callback:
+    get:
+      parameters:
+      - description: 授权码
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: 状态值
+        in: query
+        name: state
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: GitHub 登录回调
       tags:
       - 认证
   /auth/read-history:
@@ -2769,6 +2906,119 @@ paths:
       summary: 获取指定用户的勋章列表
       tags:
       - 勋章
+  /users/{id}/follow:
+    delete:
+      parameters:
+      - description: 目标用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 取消关注
+      tags:
+      - 用户关注
+    post:
+      parameters:
+      - description: 目标用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: 关注用户
+      tags:
+      - 用户关注
+  /users/{id}/followers:
+    get:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListResponse'
+              type: object
+      summary: 粉丝列表
+      tags:
+      - 用户关注
+  /users/{id}/following:
+    get:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListResponse'
+              type: object
+      summary: 关注列表
+      tags:
+      - 用户关注
 securityDefinitions:
   BearerAuth:
     description: 请输入 "Bearer {token}"，例如：Bearer eyJhbGciOiJIUzI1NiIs...

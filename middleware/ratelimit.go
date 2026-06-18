@@ -181,7 +181,7 @@ func RateLimit() gin.HandlerFunc {
 
 		if !limiter.Allow(key) {
 			c.Header("Retry-After", strconv.Itoa(cfg.WindowSec))
-			utils.Error(c, utils.CodeTooManyRequests, "请求过于频繁，请稍后再试")
+			utils.Error(c, utils.CodeTooManyRequests, utils.T(utils.GetLocale(c), "request_too_frequent"))
 			c.Abort()
 			return
 		}

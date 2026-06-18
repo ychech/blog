@@ -208,6 +208,8 @@ type Comment struct {
 	AuthorName string         `json:"author_name" gorm:"size:100;not null"` // 冗余字段，减少查询
 	Content    string         `json:"content" gorm:"type:text;not null"`
 	LikeCount  int64          `json:"like_count" gorm:"-"`
+	IsPinned   bool           `json:"is_pinned" gorm:"default:false;index"`  // 是否置顶
+	IsEssence  bool           `json:"is_essence" gorm:"default:false;index"` // 是否精华
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
@@ -434,6 +436,25 @@ type ReadHistory struct {
 	UserID uint      `json:"user_id" gorm:"not null;index"`
 	PostID uint      `json:"post_id" gorm:"not null;index"`
 	ReadAt time.Time `json:"read_at"`
+}
+
+// OAuthAccount 第三方 OAuth 账号绑定
+type OAuthAccount struct {
+	ID             uint      `json:"id" gorm:"primaryKey"`
+	UserID         uint      `json:"user_id" gorm:"not null;index"`
+	Provider       string    `json:"provider" gorm:"size:50;not null"`
+	ProviderUserID string    `json:"provider_user_id" gorm:"size:100;not null"`
+	AccessToken    string    `json:"-" gorm:"size:255"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// UserFollow 用户关注关系
+type UserFollow struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
+	FollowerID  uint      `json:"follower_id" gorm:"not null;uniqueIndex:idx_user_follow"`
+	FollowingID uint      `json:"following_id" gorm:"not null;uniqueIndex:idx_user_follow"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // Conversation 会话摘要

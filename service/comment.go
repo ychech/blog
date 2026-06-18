@@ -117,6 +117,32 @@ func (s *CommentService) ListByPost(postID uint) ([]model.Comment, error) {
 	return comments, nil
 }
 
+// PinComment 置顶/取消置顶评论（管理员）。
+func (s *CommentService) PinComment(id uint, pinned bool) (*model.Comment, error) {
+	var comment model.Comment
+	if err := database.DB.First(&comment, id).Error; err != nil {
+		return nil, err
+	}
+	if err := database.DB.Model(&comment).Update("is_pinned", pinned).Error; err != nil {
+		return nil, err
+	}
+	comment.IsPinned = pinned
+	return &comment, nil
+}
+
+// EssenceComment 加精/取消加精评论（管理员）。
+func (s *CommentService) EssenceComment(id uint, essence bool) (*model.Comment, error) {
+	var comment model.Comment
+	if err := database.DB.First(&comment, id).Error; err != nil {
+		return nil, err
+	}
+	if err := database.DB.Model(&comment).Update("is_essence", essence).Error; err != nil {
+		return nil, err
+	}
+	comment.IsEssence = essence
+	return &comment, nil
+}
+
 // Delete 删除评论。管理员可删除任意评论，普通用户只能删除自己的评论。
 // 删除时会级联软删除所有子回复，避免留下悬挂的 parent_id。
 func (s *CommentService) Delete(id, currentUserID uint, isAdmin bool) error {
