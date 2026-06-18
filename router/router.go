@@ -79,6 +79,8 @@ func Setup() *gin.Engine {
 		auth.POST("/refresh", middleware.JWTAuth(), authHandler.RefreshToken)
 		auth.POST("/logout", middleware.JWTAuth(), authHandler.Logout)
 		auth.GET("/badges", middleware.JWTAuth(), badgeHandler.GetMyBadges)
+		auth.GET("/favorites", middleware.JWTAuth(), postHandler.ListFavorites)
+		auth.GET("/read-history", middleware.JWTAuth(), postHandler.ListReadHistory)
 		auth.GET("/users", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminListUsers)
 		auth.GET("/users/:id", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminGetUser)
 		auth.PUT("/users/:id/role", middleware.JWTAuth(), middleware.AdminAuth(), authHandler.AdminUpdateUserRole)
@@ -114,6 +116,8 @@ func Setup() *gin.Engine {
 		authorized.POST("/posts", postHandler.Create)
 		authorized.POST("/posts/drafts", postHandler.SaveDraft)
 		authorized.GET("/posts/drafts", postHandler.GetDraft)
+		authorized.POST("/posts/:id/favorite", postHandler.AddFavorite)
+		authorized.DELETE("/posts/:id/favorite", postHandler.RemoveFavorite)
 		authorized.PUT("/posts/:id", postHandler.Update)
 		authorized.DELETE("/posts/:id", postHandler.Delete)
 

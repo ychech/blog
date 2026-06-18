@@ -420,6 +420,22 @@ type SendMessageRequest struct {
 	Content    string `json:"content" binding:"required"`
 }
 
+// Favorite 文章收藏
+type Favorite struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	UserID    uint      `json:"user_id" gorm:"not null;uniqueIndex:idx_user_post_favorite"`
+	PostID    uint      `json:"post_id" gorm:"not null;uniqueIndex:idx_user_post_favorite"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ReadHistory 文章阅读历史
+type ReadHistory struct {
+	ID     uint      `json:"id" gorm:"primaryKey"`
+	UserID uint      `json:"user_id" gorm:"not null;index"`
+	PostID uint      `json:"post_id" gorm:"not null;index"`
+	ReadAt time.Time `json:"read_at"`
+}
+
 // Conversation 会话摘要
 type Conversation struct {
 	UserID        uint      `json:"user_id"`

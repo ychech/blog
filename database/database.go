@@ -133,6 +133,8 @@ func migrate() error {
 		&model.AuditLog{},
 		&model.CommentReport{},
 		&model.Message{},
+		&model.Favorite{},
+		&model.ReadHistory{},
 	)
 }
 

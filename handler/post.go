@@ -181,6 +181,11 @@ func (h *PostHandler) Get(c *gin.Context) {
 		}
 	}()
 
+	// 登录用户记录阅读历史
+	if userID != 0 {
+		go service.RecordReadHistory(userID, post.ID)
+	}
+
 	// 仅已发布文章写入缓存
 	if post.Status == model.PostStatusPublished {
 		service.SetPostCache(post)
@@ -291,4 +296,122 @@ func (h *PostHandler) Hot(c *gin.Context) {
 	}
 
 	utils.Success(c, posts)
+}
+
+// AddFavorite 收藏文章（需要登录）。
+// @Summary 收藏文章
+// @Tags 文章
+// @Security BearerAuth
+// @Param id path int true "文章 ID"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /posts/{id}/favorite [post]
+func (h *PostHandler) AddFavorite(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		utils.BadRequest(c, "文章 ID 无效")
+		return
+	}
+
+	if err := service.AddFavorite(userID, uint(id)); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "收藏成功"})
+}
+
+// RemoveFavorite 取消收藏（需要登录）。
+// @Summary 取消收藏
+// @Tags 文章
+// @Security BearerAuth
+// @Param id path int true "文章 ID"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /posts/{id}/favorite [delete]
+func (h *PostHandler) RemoveFavorite(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		utils.BadRequest(c, "文章 ID 无效")
+		return
+	}
+
+	if err := service.RemoveFavorite(userID, uint(id)); err != nil {
+		utils.Error(c, utils.CodeBusinessError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{"message": "已取消收藏"})
+}
+
+// ListFavorites 获取当前用户收藏列表（需要登录）。
+// @Summary 我的收藏
+// @Tags 文章
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} utils.Response{data=model.ListResponse}
+// @Failure 401 {object} utils.Response
+// @Router /auth/favorites [get]
+func (h *PostHandler) ListFavorites(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	resp, err := service.ListUserFavorites(userID, page, pageSize)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, resp)
+}
+
+// ListReadHistory 获取当前用户阅读历史（需要登录）。
+// @Summary 阅读历史
+// @Tags 文章
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} utils.Response{data=model.ListResponse}
+// @Failure 401 {object} utils.Response
+// @Router /auth/read-history [get]
+func (h *PostHandler) ListReadHistory(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "请先登录")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	resp, err := service.ListReadHistory(userID, page, pageSize)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, resp)
 }
