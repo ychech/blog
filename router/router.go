@@ -62,6 +62,7 @@ func Setup() *gin.Engine {
 	adminHandler := handler.NewAdminHandler()
 	notificationHandler := handler.NewNotificationHandler()
 	commentReportHandler := handler.NewCommentReportHandler()
+	messageHandler := handler.NewMessageHandler()
 
 	// 认证路由：注册、登录公开；获取/更新当前用户需要登录
 	auth := r.Group("/api/auth")
@@ -164,6 +165,12 @@ func Setup() *gin.Engine {
 		admin.GET("/comment-reports", commentReportHandler.List)
 		admin.PUT("/comment-reports/:id/status", commentReportHandler.UpdateStatus)
 	}
+
+	// 私信路由（需登录）
+	authorized.POST("/messages", messageHandler.Send)
+	authorized.GET("/messages/conversations", messageHandler.ListConversations)
+	authorized.GET("/messages/unread-count", messageHandler.CountUnread)
+	authorized.GET("/messages/:user_id", messageHandler.ListMessages)
 
 	// 通知路由（需登录）
 	api.GET("/notifications", middleware.JWTAuth(), notificationHandler.List)

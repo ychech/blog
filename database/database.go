@@ -132,6 +132,7 @@ func migrate() error {
 		&model.Notification{},
 		&model.AuditLog{},
 		&model.CommentReport{},
+		&model.Message{},
 	)
 }
 

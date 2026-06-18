@@ -403,6 +403,34 @@ type UpdateCommentReportStatusRequest struct {
 	Status CommentReportStatus `json:"status" binding:"required,oneof=pending approved rejected"`
 }
 
+// Message 站内私信模型
+type Message struct {
+	ID         uint      `json:"id" gorm:"primaryKey"`
+	SenderID   uint      `json:"sender_id" gorm:"not null;index"`
+	ReceiverID uint      `json:"receiver_id" gorm:"not null;index"`
+	Content    string    `json:"content" gorm:"type:text;not null"`
+	IsRead     bool      `json:"is_read" gorm:"default:false;index"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// SendMessageRequest 发送私信请求
+type SendMessageRequest struct {
+	ReceiverID uint   `json:"receiver_id" binding:"required"`
+	Content    string `json:"content" binding:"required"`
+}
+
+// Conversation 会话摘要
+type Conversation struct {
+	UserID        uint      `json:"user_id"`
+	Username      string    `json:"username"`
+	Nickname      string    `json:"nickname"`
+	Avatar        string    `json:"avatar"`
+	LastContent   string    `json:"last_content"`
+	LastMessageAt time.Time `json:"last_message_at"`
+	UnreadCount   int64     `json:"unread_count"`
+}
+
 // AuditLogQuery 审计日志查询参数
 type AuditLogQuery struct {
 	Page      int       `form:"page"`
