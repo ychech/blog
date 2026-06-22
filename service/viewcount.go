@@ -1,10 +1,10 @@
 // package service 实现文章浏览量统计与同步。
 //
 // 设计思路：
-//   1. 用户每次访问文章，浏览量先写入 Redis（Incr），避免直接写 MySQL 造成压力。
-//   2. 后台定时任务（默认 10 秒）将 Redis 中的增量同步到 MySQL，然后删除 Redis 中的增量。
-//   3. 读取文章时，返回 MySQL 中的持久化值 + Redis 中的未同步增量，保证数据实时性。
-//   4. Redis 不可用时，自动降级为直接更新 MySQL。
+//  1. 用户每次访问文章，浏览量先写入 Redis（Incr），避免直接写 MySQL 造成压力。
+//  2. 后台定时任务（默认 10 秒）将 Redis 中的增量同步到 MySQL，然后删除 Redis 中的增量。
+//  3. 读取文章时，返回 MySQL 中的持久化值 + Redis 中的未同步增量，保证数据实时性。
+//  4. Redis 不可用时，自动降级为直接更新 MySQL。
 package service
 
 import (

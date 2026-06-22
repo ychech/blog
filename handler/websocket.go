@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"blog/config"
 	"blog/service"
 	"blog/utils"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -12,10 +15,36 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// 生产环境建议根据前端域名做白名单校验；开发环境允许跨域。
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin:     checkWebsocketOrigin,
+}
+
+// checkWebsocketOrigin 校验 WebSocket 跨域来源。
+// 未配置 BaseURL 或开发环境（localhost）允许所有来源；生产环境仅允许 BaseURL 对应域名。
+func checkWebsocketOrigin(r *http.Request) bool {
+	if config.C == nil || config.C.App.BaseURL == "" {
 		return true
-	},
+	}
+
+	base, err := url.Parse(config.C.App.BaseURL)
+	if err != nil {
+		return true
+	}
+
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+
+	// 开发环境放宽限制
+	if strings.Contains(base.Host, "localhost") || strings.Contains(base.Host, "127.0.0.1") {
+		return true
+	}
+
+	o, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return o.Host == base.Host
 }
 
 // NotificationWebSocket 建立实时通知 WebSocket 连接。

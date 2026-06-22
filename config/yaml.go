@@ -23,12 +23,13 @@ import (
 // 不视为错误。这样 YAML 文件是可选的，项目可以只使用 .env 或环境变量运行。
 //
 // YAML 结构需要与 Config 结构体中的 yaml tag 对应，例如：
-//   server:
-//     host: 0.0.0.0
-//     port: 8080
-//   db:
-//     host: 127.0.0.1
-//     port: 3306
+//
+//	server:
+//	  host: 0.0.0.0
+//	  port: 8080
+//	db:
+//	  host: 127.0.0.1
+//	  port: 3306
 //
 // 读取成功后，会直接通过 yaml.Unmarshal 反序列化到 cfg 结构体。
 func applyYAMLFile(cfg *Config, path string) error {

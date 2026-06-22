@@ -3,6 +3,7 @@ package service
 import (
 	"blog/database"
 	"blog/model"
+	"blog/utils"
 	"fmt"
 )
 
@@ -112,22 +113,31 @@ func listFollowUsers(column string, userID uint, page, pageSize int) (*model.Lis
 // IsFollowing 查询是否已关注。
 func IsFollowing(followerID, followingID uint) bool {
 	var count int64
-	database.DB.Model(&model.UserFollow{}).
+	if err := database.DB.Model(&model.UserFollow{}).
 		Where("follower_id = ? AND following_id = ?", followerID, followingID).
-		Count(&count)
+		Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询关注状态失败: %v", err)
+		return false
+	}
 	return count > 0
 }
 
 // CountFollowers 查询粉丝数。
 func CountFollowers(userID uint) int64 {
 	var count int64
-	database.DB.Model(&model.UserFollow{}).Where("following_id = ?", userID).Count(&count)
+	if err := database.DB.Model(&model.UserFollow{}).Where("following_id = ?", userID).Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询粉丝数失败: %v", err)
+		return 0
+	}
 	return count
 }
 
 // CountFollowing 查询关注数。
 func CountFollowing(userID uint) int64 {
 	var count int64
-	database.DB.Model(&model.UserFollow{}).Where("follower_id = ?", userID).Count(&count)
+	if err := database.DB.Model(&model.UserFollow{}).Where("follower_id = ?", userID).Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询关注数失败: %v", err)
+		return 0
+	}
 	return count
 }

@@ -1,9 +1,9 @@
 // package config 中的 viper.go 负责基于 Viper 的多环境配置加载。
 //
 // 设计目标：
-//   1. 支持按运行环境加载不同配置文件，例如 config.dev.yaml、config.prod.yaml。
-//   2. 环境变量优先级高于配置文件。
-//   3. 保留原有 .env / YAML / 环境变量的加载能力，便于渐进式迁移。
+//  1. 支持按运行环境加载不同配置文件，例如 config.dev.yaml、config.prod.yaml。
+//  2. 环境变量优先级高于配置文件。
+//  3. 保留原有 .env / YAML / 环境变量的加载能力，便于渐进式迁移。
 //
 // 环境选择规则：
 //   - 读取 APP_ENV 或 BLOG_APP_ENV 环境变量
@@ -24,11 +24,11 @@ import (
 // LoadWithViper 使用 Viper 加载配置。
 //
 // 加载顺序（后加载的覆盖先加载的）：
-//   1. 硬编码默认值（defaultConfig）
-//   2. config.{env}.yaml（如果存在）
-//   3. config.yaml（如果存在，作为兜底）
-//   4. .env 文件（如果存在）
-//   5. 系统环境变量（最高优先级）
+//  1. 硬编码默认值（defaultConfig）
+//  2. config.{env}.yaml（如果存在）
+//  3. config.yaml（如果存在，作为兜底）
+//  4. .env 文件（如果存在）
+//  5. 系统环境变量（最高优先级）
 //
 // 参数 opts 中的 EnvFile 和 YAMLFile 仍然有效；
 // 如果 YAMLFile 为空，则根据 APP_ENV 自动选择配置文件。
@@ -105,28 +105,28 @@ func getAppEnv() string {
 // setViperDefaults 将硬编码默认值注册到 Viper 实例。
 func setViperDefaults(v *viper.Viper) {
 	defaults := map[string]interface{}{
-		"server.host": DefaultServerHost,
-		"server.port": DefaultServerPort,
-		"db.host":     DefaultDBHost,
-		"db.port":     DefaultDBPort,
-		"db.user":     DefaultDBUser,
-		"db.password": DefaultDBPassword,
-		"db.database": DefaultDBName,
-		"db.charset":  DefaultDBCharset,
-		"redis.host":  DefaultRedisHost,
-		"redis.port":  DefaultRedisPort,
-		"redis.db":    DefaultRedisDB,
-		"jwt.secret":  DefaultJWTSecret,
-		"jwt.expire_hour": DefaultJWTExpireHour,
-		"app.upload_path":    DefaultUploadPath,
-		"app.max_upload_size": DefaultMaxUploadSize,
-		"rate_limit.enabled":   DefaultRateLimitEnabled,
-		"rate_limit.requests":  DefaultRateLimitRequests,
-		"rate_limit.window_sec": DefaultRateLimitWindowSec,
-		"email.port":      DefaultEmailPort,
-		"email.enable_ssl": DefaultEmailEnableSSL,
-		"email_verification.enabled":     DefaultEmailVerificationEnabled,
-		"email_verification.required":    DefaultEmailVerificationRequired,
+		"server.host":                     DefaultServerHost,
+		"server.port":                     DefaultServerPort,
+		"db.host":                         DefaultDBHost,
+		"db.port":                         DefaultDBPort,
+		"db.user":                         DefaultDBUser,
+		"db.password":                     DefaultDBPassword,
+		"db.database":                     DefaultDBName,
+		"db.charset":                      DefaultDBCharset,
+		"redis.host":                      DefaultRedisHost,
+		"redis.port":                      DefaultRedisPort,
+		"redis.db":                        DefaultRedisDB,
+		"jwt.secret":                      DefaultJWTSecret,
+		"jwt.expire_hour":                 DefaultJWTExpireHour,
+		"app.upload_path":                 DefaultUploadPath,
+		"app.max_upload_size":             DefaultMaxUploadSize,
+		"rate_limit.enabled":              DefaultRateLimitEnabled,
+		"rate_limit.requests":             DefaultRateLimitRequests,
+		"rate_limit.window_sec":           DefaultRateLimitWindowSec,
+		"email.port":                      DefaultEmailPort,
+		"email.enable_ssl":                DefaultEmailEnableSSL,
+		"email_verification.enabled":      DefaultEmailVerificationEnabled,
+		"email_verification.required":     DefaultEmailVerificationRequired,
 		"email_verification.code_ttl_min": DefaultEmailVerificationCodeTTLMin,
 	}
 	for key, value := range defaults {

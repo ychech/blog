@@ -1,14 +1,15 @@
 // package config 中的 env.go 负责环境变量相关处理。
 //
 // 包括：
-//   1. 从 .env 文件读取环境变量（开发时常用）。
-//   2. 从系统环境变量读取配置（生产环境常用）。
-//   3. 将扁平化的环境变量映射到 Config 结构体。
+//  1. 从 .env 文件读取环境变量（开发时常用）。
+//  2. 从系统环境变量读取配置（生产环境常用）。
+//  3. 将扁平化的环境变量映射到 Config 结构体。
 //
 // 环境变量命名规则：
-//   推荐使用 BLOG_ 前缀，例如 BLOG_DB_HOST、BLOG_JWT_SECRET。
-//   为兼容旧写法，也支持无前缀版本，如 DB_HOST。
-//   带前缀的变量优先级高于无前缀版本。
+//
+//	推荐使用 BLOG_ 前缀，例如 BLOG_DB_HOST、BLOG_JWT_SECRET。
+//	为兼容旧写法，也支持无前缀版本，如 DB_HOST。
+//	带前缀的变量优先级高于无前缀版本。
 package config
 
 import (
@@ -60,8 +61,8 @@ func applyEnv(cfg *Config) {
 // getEnv 从环境变量 map 中读取指定 key。
 //
 // 查找顺序：
-//   1. 先查找带前缀的变量，例如 BLOG_DB_HOST
-//   2. 如果找不到，再查找无前缀版本，例如 DB_HOST
+//  1. 先查找带前缀的变量，例如 BLOG_DB_HOST
+//  2. 如果找不到，再查找无前缀版本，例如 DB_HOST
 //
 // 返回值 ok 表示是否找到了该 key（即使值为空字符串也返回 true）。
 func getEnv(vars map[string]string, key string) (string, bool) {

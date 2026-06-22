@@ -11,14 +11,14 @@ import (
 type ResponseCode int
 
 const (
-	CodeSuccess           ResponseCode = 0
-	CodeBadRequest        ResponseCode = 400
-	CodeUnauthorized      ResponseCode = 401
-	CodeForbidden         ResponseCode = 403
-	CodeNotFound          ResponseCode = 404
-	CodeTooManyRequests   ResponseCode = 429
-	CodeInternalError     ResponseCode = 500
-	CodeBusinessError     ResponseCode = 1001
+	CodeSuccess         ResponseCode = 0
+	CodeBadRequest      ResponseCode = 400
+	CodeUnauthorized    ResponseCode = 401
+	CodeForbidden       ResponseCode = 403
+	CodeNotFound        ResponseCode = 404
+	CodeTooManyRequests ResponseCode = 429
+	CodeInternalError   ResponseCode = 500
+	CodeBusinessError   ResponseCode = 1001
 )
 
 // Response 统一 API 响应结构

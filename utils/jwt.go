@@ -13,9 +13,9 @@ import (
 
 // JWTClaims 自定义 JWT 声明，包含用户 ID、用户名与角色。
 type JWTClaims struct {
-	UserID   uint             `json:"user_id"`
-	Username string           `json:"username"`
-	Role     model.UserRole   `json:"role"`
+	UserID   uint           `json:"user_id"`
+	Username string         `json:"username"`
+	Role     model.UserRole `json:"role"`
 	jwt.RegisteredClaims
 }
 

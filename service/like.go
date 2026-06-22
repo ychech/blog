@@ -5,6 +5,7 @@ package service
 import (
 	"blog/database"
 	"blog/model"
+	"blog/utils"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -78,14 +79,20 @@ func (s *LikeService) notifyPostAuthor(postID, userID uint) {
 // IsLiked 检查用户是否已点赞
 func (s *LikeService) IsLiked(postID, userID uint) bool {
 	var count int64
-	database.DB.Model(&model.Like{}).Where("post_id = ? AND user_id = ?", postID, userID).Count(&count)
+	if err := database.DB.Model(&model.Like{}).Where("post_id = ? AND user_id = ?", postID, userID).Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询文章点赞状态失败: %v", err)
+		return false
+	}
 	return count > 0
 }
 
 // GetLikeCount 获取文章点赞数
 func (s *LikeService) GetLikeCount(postID uint) int64 {
 	var count int64
-	database.DB.Model(&model.Like{}).Where("post_id = ?", postID).Count(&count)
+	if err := database.DB.Model(&model.Like{}).Where("post_id = ?", postID).Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询文章点赞数失败: %v", err)
+		return 0
+	}
 	return count
 }
 
@@ -101,11 +108,14 @@ func (s *LikeService) BatchGetLikeCounts(postIDs []uint) map[uint]int64 {
 		PostID uint  `gorm:"column:post_id"`
 		Count  int64 `gorm:"column:count"`
 	}
-	database.DB.Model(&model.Like{}).
+	if err := database.DB.Model(&model.Like{}).
 		Select("post_id, COUNT(*) as count").
 		Where("post_id IN ?", postIDs).
 		Group("post_id").
-		Find(&rows)
+		Find(&rows).Error; err != nil {
+		utils.Logger.Errorf("批量查询文章点赞数失败: %v", err)
+		return result
+	}
 
 	for _, row := range rows {
 		result[row.PostID] = row.Count
@@ -124,10 +134,13 @@ func (s *LikeService) BatchIsLiked(postIDs []uint, userID uint) map[uint]bool {
 	var rows []struct {
 		PostID uint `gorm:"column:post_id"`
 	}
-	database.DB.Model(&model.Like{}).
+	if err := database.DB.Model(&model.Like{}).
 		Select("post_id").
 		Where("post_id IN ? AND user_id = ?", postIDs, userID).
-		Find(&rows)
+		Find(&rows).Error; err != nil {
+		utils.Logger.Errorf("批量查询文章点赞状态失败: %v", err)
+		return result
+	}
 
 	for _, row := range rows {
 		result[row.PostID] = true

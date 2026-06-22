@@ -524,13 +524,31 @@ func (h *AuthHandler) AdminUpdateUserStatus(c *gin.Context) {
 // @Failure 403 {object} utils.Response
 // @Router /admin/users/batch-delete [post]
 func (h *AuthHandler) AdminBatchDeleteUsers(c *gin.Context) {
+	currentUserID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "未登录")
+		return
+	}
+
 	var req model.BatchDeleteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.BadRequest(c, "请求参数错误: "+err.Error())
 		return
 	}
 
-	if err := h.userService.BatchDelete(req.IDs); err != nil {
+	// 防止管理员误删自己
+	filtered := make([]uint, 0, len(req.IDs))
+	for _, id := range req.IDs {
+		if id != currentUserID {
+			filtered = append(filtered, id)
+		}
+	}
+	if len(filtered) == 0 {
+		utils.BadRequest(c, "不能删除当前登录账号")
+		return
+	}
+
+	if err := h.userService.BatchDelete(filtered); err != nil {
 		utils.Error(c, utils.CodeBusinessError, err.Error())
 		return
 	}
@@ -548,9 +566,20 @@ func (h *AuthHandler) AdminBatchDeleteUsers(c *gin.Context) {
 // @Failure 403 {object} utils.Response
 // @Router /auth/users/{id} [delete]
 func (h *AuthHandler) AdminDeleteUser(c *gin.Context) {
+	currentUserID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		utils.Unauthorized(c, "未登录")
+		return
+	}
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.BadRequest(c, "用户 ID 格式错误")
+		return
+	}
+
+	if uint(id) == currentUserID {
+		utils.BadRequest(c, "不能删除当前登录账号")
 		return
 	}
 

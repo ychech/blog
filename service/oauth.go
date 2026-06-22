@@ -173,5 +173,3 @@ func fetchGitHubUser(ctx context.Context, accessToken string) (*githubUserInfo, 
 	}
 	return &info, nil
 }
-
-

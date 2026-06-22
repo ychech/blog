@@ -5,6 +5,7 @@ package service
 import (
 	"blog/database"
 	"blog/model"
+	"blog/utils"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -78,14 +79,20 @@ func (s *CommentLikeService) notifyCommentAuthor(commentID, userID uint) {
 // IsLiked 检查用户是否已点赞某条评论
 func (s *CommentLikeService) IsLiked(commentID, userID uint) bool {
 	var count int64
-	database.DB.Model(&model.CommentLike{}).Where("comment_id = ? AND user_id = ?", commentID, userID).Count(&count)
+	if err := database.DB.Model(&model.CommentLike{}).Where("comment_id = ? AND user_id = ?", commentID, userID).Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询评论点赞状态失败: %v", err)
+		return false
+	}
 	return count > 0
 }
 
 // GetLikeCount 获取评论点赞数
 func (s *CommentLikeService) GetLikeCount(commentID uint) int64 {
 	var count int64
-	database.DB.Model(&model.CommentLike{}).Where("comment_id = ?", commentID).Count(&count)
+	if err := database.DB.Model(&model.CommentLike{}).Where("comment_id = ?", commentID).Count(&count).Error; err != nil {
+		utils.Logger.Errorf("查询评论点赞数失败: %v", err)
+		return 0
+	}
 	return count
 }
 
@@ -100,11 +107,14 @@ func (s *CommentLikeService) BatchGetLikeCounts(commentIDs []uint) map[uint]int6
 		CommentID uint  `gorm:"column:comment_id"`
 		Count     int64 `gorm:"column:count"`
 	}
-	database.DB.Model(&model.CommentLike{}).
+	if err := database.DB.Model(&model.CommentLike{}).
 		Select("comment_id, COUNT(*) as count").
 		Where("comment_id IN ?", commentIDs).
 		Group("comment_id").
-		Find(&rows)
+		Find(&rows).Error; err != nil {
+		utils.Logger.Errorf("批量查询评论点赞数失败: %v", err)
+		return result
+	}
 
 	for _, row := range rows {
 		result[row.CommentID] = row.Count
@@ -122,10 +132,13 @@ func (s *CommentLikeService) BatchIsLiked(commentIDs []uint, userID uint) map[ui
 	var rows []struct {
 		CommentID uint `gorm:"column:comment_id"`
 	}
-	database.DB.Model(&model.CommentLike{}).
+	if err := database.DB.Model(&model.CommentLike{}).
 		Select("comment_id").
 		Where("comment_id IN ? AND user_id = ?", commentIDs, userID).
-		Find(&rows)
+		Find(&rows).Error; err != nil {
+		utils.Logger.Errorf("批量查询评论点赞状态失败: %v", err)
+		return result
+	}
 
 	for _, row := range rows {
 		result[row.CommentID] = true

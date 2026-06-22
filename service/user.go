@@ -139,12 +139,12 @@ func (s *UserService) List(page, pageSize int) (*model.ListResponse, error) {
 // GetStats 获取站点统计信息（管理员使用）
 func (s *UserService) GetStats() (gin.H, error) {
 	var stats struct {
-		UserCount    int64
-		PostCount    int64
-		CommentCount int64
+		UserCount     int64
+		PostCount     int64
+		CommentCount  int64
 		CategoryCount int64
-		TagCount     int64
-		BadgeCount   int64
+		TagCount      int64
+		BadgeCount    int64
 	}
 
 	db := database.DB

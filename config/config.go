@@ -1,20 +1,21 @@
 // package config 负责加载并统一管理应用配置。
 //
 // 设计目标：
-//   1. 支持多种配置来源：硬编码默认值、.env 文件、YAML 文件、系统环境变量。
-//   2. 配置优先级（从高到低）：系统环境变量 > YAML 文件 > .env 文件 > 硬编码默认值。
-//   3. 提供统一的加载入口 config.Load()，加载失败直接退出程序，避免带着错误配置运行。
-//   4. 提供 config.LoadE() 返回错误，方便单元测试或需要自定义处理的场景。
-//   5. 所有默认值以常量形式集中定义，便于维护和测试。
+//  1. 支持多种配置来源：硬编码默认值、.env 文件、YAML 文件、系统环境变量。
+//  2. 配置优先级（从高到低）：系统环境变量 > YAML 文件 > .env 文件 > 硬编码默认值。
+//  3. 提供统一的加载入口 config.Load()，加载失败直接退出程序，避免带着错误配置运行。
+//  4. 提供 config.LoadE() 返回错误，方便单元测试或需要自定义处理的场景。
+//  5. 所有默认值以常量形式集中定义，便于维护和测试。
 //
 // 使用方式：
-//   // main.go 启动时调用
-//   config.Load()
 //
-//   // 业务代码通过全局变量 config.C 访问
-//   dsn := config.C.DB.DSN()
-//   redisAddr := config.C.Redis.Addr()
-//   jwtSecret := config.C.JWT.Secret
+//	// main.go 启动时调用
+//	config.Load()
+//
+//	// 业务代码通过全局变量 config.C 访问
+//	dsn := config.C.DB.DSN()
+//	redisAddr := config.C.Redis.Addr()
+//	jwtSecret := config.C.JWT.Secret
 //
 // 包内文件分工：
 //   - config.go:   Config 结构体、加载入口、默认值、配置对象的方法
@@ -36,18 +37,18 @@ var C *Config
 // Config 聚合应用运行所需的全部配置项。
 // 使用 yaml tag 支持 YAML 反序列化，使用 json tag 便于日志输出时序列化。
 type Config struct {
-	Server           ServerConfig           `yaml:"server" json:"server"`                     // HTTP 服务监听配置
-	DB               DBConfig               `yaml:"db" json:"db"`                             // 数据库连接配置
-	Redis            RedisConfig            `yaml:"redis" json:"redis"`                       // Redis 连接配置
-	JWT              JWTConfig              `yaml:"jwt" json:"jwt"`                           // JWT 签名与过期配置
-	App              AppConfig              `yaml:"app" json:"app"`                           // 应用级配置（上传、静态资源等）
-	OAuth            OAuthConfig            `yaml:"oauth" json:"oauth"`                       // 第三方 OAuth2 登录配置
-	RateLimit        RateLimitConfig        `yaml:"rate_limit" json:"rate_limit"`             // 接口限流配置
-	UserRateLimit    UserRateLimitConfig    `yaml:"user_rate_limit" json:"user_rate_limit"`   // 按用户维度限流配置
-	Email            EmailConfig            `yaml:"email" json:"email"`                       // SMTP 邮件配置
+	Server            ServerConfig            `yaml:"server" json:"server"`                         // HTTP 服务监听配置
+	DB                DBConfig                `yaml:"db" json:"db"`                                 // 数据库连接配置
+	Redis             RedisConfig             `yaml:"redis" json:"redis"`                           // Redis 连接配置
+	JWT               JWTConfig               `yaml:"jwt" json:"jwt"`                               // JWT 签名与过期配置
+	App               AppConfig               `yaml:"app" json:"app"`                               // 应用级配置（上传、静态资源等）
+	OAuth             OAuthConfig             `yaml:"oauth" json:"oauth"`                           // 第三方 OAuth2 登录配置
+	RateLimit         RateLimitConfig         `yaml:"rate_limit" json:"rate_limit"`                 // 接口限流配置
+	UserRateLimit     UserRateLimitConfig     `yaml:"user_rate_limit" json:"user_rate_limit"`       // 按用户维度限流配置
+	Email             EmailConfig             `yaml:"email" json:"email"`                           // SMTP 邮件配置
 	EmailVerification EmailVerificationConfig `yaml:"email_verification" json:"email_verification"` // 邮箱验证配置
-	Tracing           TracingConfig          `yaml:"tracing" json:"tracing"`                                // 链路追踪配置
-	Meilisearch       MeilisearchConfig      `yaml:"meilisearch" json:"meilisearch"`                        // Meilisearch 搜索配置
+	Tracing           TracingConfig           `yaml:"tracing" json:"tracing"`                       // 链路追踪配置
+	Meilisearch       MeilisearchConfig       `yaml:"meilisearch" json:"meilisearch"`               // Meilisearch 搜索配置
 }
 
 // ServerConfig 定义 HTTP 服务的监听地址。
@@ -98,44 +99,44 @@ type AppConfig struct {
 
 // OAuthConfig 定义第三方 OAuth2 登录配置。
 type OAuthConfig struct {
-	GitHubEnabled      bool   `yaml:"github_enabled" json:"github_enabled"`           // 是否启用 GitHub 登录
-	GitHubClientID     string `yaml:"github_client_id" json:"github_client_id"`       // GitHub OAuth App Client ID
+	GitHubEnabled      bool   `yaml:"github_enabled" json:"github_enabled"`             // 是否启用 GitHub 登录
+	GitHubClientID     string `yaml:"github_client_id" json:"github_client_id"`         // GitHub OAuth App Client ID
 	GitHubClientSecret string `yaml:"github_client_secret" json:"github_client_secret"` // GitHub OAuth App Client Secret
-	GitHubRedirectURL  string `yaml:"github_redirect_url" json:"github_redirect_url"`  // GitHub 回调地址
+	GitHubRedirectURL  string `yaml:"github_redirect_url" json:"github_redirect_url"`   // GitHub 回调地址
 }
 
 // RateLimitConfig 定义接口限流配置。
 // 基于客户端 IP 进行固定窗口计数，超过阈值后返回 429 Too Many Requests。
 type RateLimitConfig struct {
-	Enabled   bool   `yaml:"enabled" json:"enabled"`     // 是否启用限流
-	Mode      string `yaml:"mode" json:"mode"`           // 限流模式：memory（内存）或 redis（分布式）
-	Requests  int    `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
+	Enabled   bool   `yaml:"enabled" json:"enabled"`       // 是否启用限流
+	Mode      string `yaml:"mode" json:"mode"`             // 限流模式：memory（内存）或 redis（分布式）
+	Requests  int    `yaml:"requests" json:"requests"`     // 每个时间窗口内允许的最大请求数
 	WindowSec int    `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
 }
 
 // UserRateLimitConfig 定义按用户维度的接口限流配置。
 type UserRateLimitConfig struct {
-	Enabled   bool `yaml:"enabled" json:"enabled"`     // 是否启用
-	Requests  int  `yaml:"requests" json:"requests"`   // 每个时间窗口内允许的最大请求数
+	Enabled   bool `yaml:"enabled" json:"enabled"`       // 是否启用
+	Requests  int  `yaml:"requests" json:"requests"`     // 每个时间窗口内允许的最大请求数
 	WindowSec int  `yaml:"window_sec" json:"window_sec"` // 时间窗口长度，单位：秒
 }
 
 // EmailConfig 定义 SMTP 邮件发送配置。
 type EmailConfig struct {
-	Host                   string `yaml:"host" json:"host"`                                       // SMTP 服务器地址
-	Port                   int    `yaml:"port" json:"port"`                                       // SMTP 端口
-	Username               string `yaml:"username" json:"username"`                               // 发件邮箱
-	Password               string `yaml:"password" json:"password"`                               // 邮箱密码或授权码
-	From                   string `yaml:"from" json:"from"`                                       // 发件人显示名称
-	EnableSSL              bool   `yaml:"enable_ssl" json:"enable_ssl"`                           // 是否启用 SSL
-	NotificationEmailEnabled bool `yaml:"notification_email_enabled" json:"notification_email_enabled"` // 是否启用站内通知邮件提醒
+	Host                     string `yaml:"host" json:"host"`                                             // SMTP 服务器地址
+	Port                     int    `yaml:"port" json:"port"`                                             // SMTP 端口
+	Username                 string `yaml:"username" json:"username"`                                     // 发件邮箱
+	Password                 string `yaml:"password" json:"password"`                                     // 邮箱密码或授权码
+	From                     string `yaml:"from" json:"from"`                                             // 发件人显示名称
+	EnableSSL                bool   `yaml:"enable_ssl" json:"enable_ssl"`                                 // 是否启用 SSL
+	NotificationEmailEnabled bool   `yaml:"notification_email_enabled" json:"notification_email_enabled"` // 是否启用站内通知邮件提醒
 }
 
 // EmailVerificationConfig 定义邮箱验证配置。
 type EmailVerificationConfig struct {
-	Enabled     bool `yaml:"enabled" json:"enabled"`         // 是否启用邮箱验证
-	Required    bool `yaml:"required" json:"required"`       // 是否必须验证后才能登录
-	CodeTTLMin  int  `yaml:"code_ttl_min" json:"code_ttl_min"` // 验证码有效期（分钟）
+	Enabled    bool `yaml:"enabled" json:"enabled"`           // 是否启用邮箱验证
+	Required   bool `yaml:"required" json:"required"`         // 是否必须验证后才能登录
+	CodeTTLMin int  `yaml:"code_ttl_min" json:"code_ttl_min"` // 验证码有效期（分钟）
 }
 
 // TracingConfig 定义链路追踪配置。
@@ -184,8 +185,8 @@ const (
 	DefaultRateLimitRequests  = 100
 	DefaultRateLimitWindowSec = 60
 
-	DefaultEmailPort        = 587
-	DefaultEmailEnableSSL   = true
+	DefaultEmailPort      = 587
+	DefaultEmailEnableSSL = true
 
 	DefaultEmailVerificationEnabled    = false
 	DefaultEmailVerificationRequired   = false
@@ -292,7 +293,8 @@ func DefaultConfig() *Config {
 // 这样可以确保程序不会带着错误或不完整的配置继续运行。
 //
 // 通常在 main.go 的第一行调用：
-//   config.Load()
+//
+//	config.Load()
 func Load() {
 	cfg, err := LoadE()
 	if err != nil {
@@ -317,12 +319,12 @@ func LoadE() (*Config, error) {
 // LoadWithOptions 是真正执行配置加载的函数。
 //
 // 加载顺序（后加载的会覆盖先加载的）：
-//   1. 硬编码默认值（defaultConfig）
-//   2. .env 文件（applyEnvFile）
-//   3. YAML 配置文件（applyYAMLFile）
-//   4. 系统环境变量（applyEnv）
-//   5. 配置整理（normalize）
-//   6. 合法性校验（validate）
+//  1. 硬编码默认值（defaultConfig）
+//  2. .env 文件（applyEnvFile）
+//  3. YAML 配置文件（applyYAMLFile）
+//  4. 系统环境变量（applyEnv）
+//  5. 配置整理（normalize）
+//  6. 合法性校验（validate）
 //
 // 参数 opts 允许调用者自定义 .env 和 YAML 文件的路径。
 func LoadWithOptions(opts LoadOptions) (*Config, error) {

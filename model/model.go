@@ -19,18 +19,18 @@ const (
 // User 用户模型，对应 users 表。
 // Password 字段使用 json:"-"，避免在接口响应中泄露密码哈希。
 type User struct {
-	ID             uint           `json:"id" gorm:"primaryKey"`
-	Username       string         `json:"username" gorm:"size:50;not null;uniqueIndex"`
-	Password       string         `json:"-" gorm:"size:255;not null"` // json:"-" 表示不序列化到 JSON
-	Nickname       string         `json:"nickname" gorm:"size:100"`
-	Email          string         `json:"email" gorm:"size:100"`
-	EmailVerified  bool           `json:"email_verified" gorm:"default:false"`
-	Avatar         string         `json:"avatar" gorm:"size:255"`
-	Role           UserRole       `json:"role" gorm:"size:20;default:user"`
-	IsActive       bool           `json:"is_active" gorm:"default:true;index"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
+	ID            uint           `json:"id" gorm:"primaryKey"`
+	Username      string         `json:"username" gorm:"size:50;not null;uniqueIndex"`
+	Password      string         `json:"-" gorm:"size:255;not null"` // json:"-" 表示不序列化到 JSON
+	Nickname      string         `json:"nickname" gorm:"size:100"`
+	Email         string         `json:"email" gorm:"size:100"`
+	EmailVerified bool           `json:"email_verified" gorm:"default:false"`
+	Avatar        string         `json:"avatar" gorm:"size:255"`
+	Role          UserRole       `json:"role" gorm:"size:20;default:user"`
+	IsActive      bool           `json:"is_active" gorm:"default:true;index"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // Category 文章分类，对应 categories 表。
@@ -190,9 +190,9 @@ type UpdateBadgeRequest struct {
 
 // AwardBadgeRequest 颁发勋章请求
 type AwardBadgeRequest struct {
-	UserID uint   `json:"user_id" binding:"required"`
-	BadgeID uint  `json:"badge_id" binding:"required"`
-	Reason string `json:"reason"`
+	UserID  uint   `json:"user_id" binding:"required"`
+	BadgeID uint   `json:"badge_id" binding:"required"`
+	Reason  string `json:"reason"`
 }
 
 // CommentLike 评论点赞，对应 comment_likes 表。
@@ -299,20 +299,20 @@ type TrendData struct {
 
 // AdminStats 后台仪表盘统计
 type AdminStats struct {
-	Counts CountsData    `json:"counts"`
-	Trends TrendsData    `json:"trends"`
-	HotPosts []Post      `json:"hot_posts"`
-	TopTags  []Tag       `json:"top_tags"`
+	Counts   CountsData `json:"counts"`
+	Trends   TrendsData `json:"trends"`
+	HotPosts []Post     `json:"hot_posts"`
+	TopTags  []Tag      `json:"top_tags"`
 }
 
 // CountsData 各类资源总数
 type CountsData struct {
-	Users    int64 `json:"users"`
-	Posts    int64 `json:"posts"`
-	Comments int64 `json:"comments"`
+	Users      int64 `json:"users"`
+	Posts      int64 `json:"posts"`
+	Comments   int64 `json:"comments"`
 	Categories int64 `json:"categories"`
-	Tags     int64 `json:"tags"`
-	Badges   int64 `json:"badges"`
+	Tags       int64 `json:"tags"`
+	Badges     int64 `json:"badges"`
 }
 
 // TrendsData 近 7 天趋势
@@ -328,8 +328,8 @@ type CreatePostRequest struct {
 	Summary    string     `json:"summary"`
 	Content    string     `json:"content" binding:"required"`
 	CoverURL   string     `json:"cover_url"`
-	Status     PostStatus `json:"status"`            // draft / published / scheduled，默认 published
-	PublishAt  *time.Time `json:"publish_at"`        // 定时发布时间，status=scheduled 时必填
+	Status     PostStatus `json:"status"`     // draft / published / scheduled，默认 published
+	PublishAt  *time.Time `json:"publish_at"` // 定时发布时间，status=scheduled 时必填
 	CategoryID uint       `json:"category_id" binding:"required"`
 	TagIDs     []uint     `json:"tag_ids"`
 }
@@ -354,8 +354,8 @@ type PostQuery struct {
 	Keyword    string     `form:"keyword"`
 	CategoryID uint       `form:"category_id"`
 	TagID      uint       `form:"tag_id"`
-	Status     PostStatus `form:"status"`   // draft / published / 空（默认只看已发布）
-	OrderBy    string     `form:"order_by"` // created_at / view_count
+	Status     PostStatus `form:"status"`    // draft / published / 空（默认只看已发布）
+	OrderBy    string     `form:"order_by"`  // created_at / view_count
 	DateFrom   string     `form:"date_from"` // 开始日期，格式 2006-01-02
 	DateTo     string     `form:"date_to"`   // 结束日期，格式 2006-01-02
 }
