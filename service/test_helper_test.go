@@ -4,6 +4,7 @@
 package service
 
 import (
+	"blog/config"
 	"blog/database"
 	"blog/model"
 	"blog/utils"
@@ -26,6 +27,10 @@ func setupTestDB(t *testing.T) (cleanup func()) {
 			t.Fatalf("初始化日志失败: %v", err)
 		}
 	}
+
+	// 每个测试使用独立默认配置，避免异步通知邮件等任务跨测试干扰
+	originalConfig := config.C
+	config.C = config.DefaultConfig()
 
 	originalDB := database.DB
 
@@ -62,5 +67,6 @@ func setupTestDB(t *testing.T) (cleanup func()) {
 
 	return func() {
 		database.DB = originalDB
+		config.C = originalConfig
 	}
 }
