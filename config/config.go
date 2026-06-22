@@ -122,12 +122,13 @@ type UserRateLimitConfig struct {
 
 // EmailConfig 定义 SMTP 邮件发送配置。
 type EmailConfig struct {
-	Host       string `yaml:"host" json:"host"`             // SMTP 服务器地址
-	Port       int    `yaml:"port" json:"port"`             // SMTP 端口
-	Username   string `yaml:"username" json:"username"`     // 发件邮箱
-	Password   string `yaml:"password" json:"password"`     // 邮箱密码或授权码
-	From       string `yaml:"from" json:"from"`             // 发件人显示名称
-	EnableSSL  bool   `yaml:"enable_ssl" json:"enable_ssl"` // 是否启用 SSL
+	Host                   string `yaml:"host" json:"host"`                                       // SMTP 服务器地址
+	Port                   int    `yaml:"port" json:"port"`                                       // SMTP 端口
+	Username               string `yaml:"username" json:"username"`                               // 发件邮箱
+	Password               string `yaml:"password" json:"password"`                               // 邮箱密码或授权码
+	From                   string `yaml:"from" json:"from"`                                       // 发件人显示名称
+	EnableSSL              bool   `yaml:"enable_ssl" json:"enable_ssl"`                           // 是否启用 SSL
+	NotificationEmailEnabled bool `yaml:"notification_email_enabled" json:"notification_email_enabled"` // 是否启用站内通知邮件提醒
 }
 
 // EmailVerificationConfig 定义邮箱验证配置。
@@ -256,8 +257,9 @@ func defaultConfig() *Config {
 			WindowSec: 60,
 		},
 		Email: EmailConfig{
-			Port:      DefaultEmailPort,
-			EnableSSL: DefaultEmailEnableSSL,
+			Port:                     DefaultEmailPort,
+			EnableSSL:                DefaultEmailEnableSSL,
+			NotificationEmailEnabled: false,
 		},
 		EmailVerification: EmailVerificationConfig{
 			Enabled:    DefaultEmailVerificationEnabled,

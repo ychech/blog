@@ -6,6 +6,7 @@ package service
 import (
 	"blog/database"
 	"blog/model"
+	"blog/utils"
 	"fmt"
 	"testing"
 	"time"
@@ -18,6 +19,13 @@ import (
 // 该函数会替换全局 database.DB，测试结束后通过返回的 cleanup 函数恢复。
 func setupTestDB(t *testing.T) (cleanup func()) {
 	t.Helper()
+
+	// 确保日志器已初始化，避免异步任务中调用 utils.Logger 时 panic
+	if utils.Logger == nil {
+		if err := utils.InitLogger(); err != nil {
+			t.Fatalf("初始化日志失败: %v", err)
+		}
+	}
 
 	originalDB := database.DB
 

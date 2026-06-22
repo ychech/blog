@@ -32,6 +32,7 @@ func CreateNotification(userID uint, nType model.NotificationType, title, conten
 		return err
 	}
 	NotifyUserRealtime(userID, notification)
+	SendNotificationEmail(userID, notification)
 	return nil
 }
 
