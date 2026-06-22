@@ -15,30 +15,60 @@
 
 ## 已实现功能
 
-1. **用户系统**：注册、登录、JWT 认证、获取当前用户
-2. **文章 CRUD**：创建、列表、详情、更新、删除
-3. **文章搜索与筛选**：关键词搜索、按分类/标签筛选、排序、分页
-4. **分类/标签 CRUD**
-5. **评论系统**：一级评论 + 嵌套回复
-6. **文件上传**：图片上传，静态文件访问
-7. **Redis 缓存**：分类列表、标签列表、热门文章、文章详情
-8. **统一响应格式**：统一错误码、统一 JSON 响应
-9. **中间件**：请求日志、panic 恢复、跨域
-10. **接口限流**：基于客户端 IP 的固定窗口限流，防止接口被刷
-11. **健康检查**：`/health` 接口检查 MySQL、Redis 依赖状态
-12. **优雅关闭**：收到 SIGINT/SIGTERM 后等待正在处理的请求完成再退出
-13. **Prometheus 监控**：自动收集请求数、耗时、请求/响应大小指标，暴露 `/metrics` 接口
-14. **阅读量统计**：浏览量先写 Redis，定时同步到 MySQL，降低数据库写压力
-15. **邮箱验证**：注册发送验证码，验证后激活邮箱；可配置是否必须验证后才能登录
-16. **Markdown 目录**：文章详情页自动生成目录，点击可平滑滚动到对应标题
-17. **单元测试**：service/config/utils 层基础单元测试，使用 SQLite 内存数据库隔离
-18. **多环境配置**：基于 Viper 支持 config.dev.yaml / config.prod.yaml 多环境加载
-19. **评论回复通知**：回复他人评论时自动发送通知，支持未读数实时提醒
-20. **分布式限流**：支持 Redis 分布式限流，多实例部署时共享限流状态
-21. **链路追踪**：基于 OpenTelemetry + OTLP，集成 Jaeger/Tempo 定位慢请求
-22. **操作审计日志**：自动记录管理员的写操作，支持后台查询审计日志
-23. **MySQL 读写分离**：基于 GORM dbresolver 插件，读请求自动路由到只读从库
-24. **Meilisearch 搜索**：文章创建/更新/删除同步索引，关键词搜索优先走 Meilisearch
+### 用户与认证
+1. **用户系统**：注册、登录、JWT 认证、登出、Token 刷新、拉黑旧 Token
+2. **用户资料**：修改昵称/邮箱/头像、修改密码
+3. **邮箱验证**：注册发送验证码，验证后激活邮箱；可配置是否必须验证后才能登录
+4. **忘记/重置密码**：通过邮箱发送重置链接
+5. **OAuth2 登录**：GitHub 第三方登录
+6. **用户关注**：关注/取消关注、粉丝/关注列表
+7. **用户角色**：普通用户 / 管理员 RBAC
+
+### 文章与内容
+8. **文章 CRUD**：创建、列表、详情、更新、删除
+9. **文章搜索与筛选**：关键词搜索、按分类/标签/时间筛选、排序、分页
+10. **文章状态**：草稿、已发布、定时发布
+11. **草稿自动保存**：临时草稿缓存，避免误刷新丢失内容
+12. **文章搜索优化**：接入 Meilisearch，关键词搜索优先走搜索引擎，失败降级 MySQL
+13. **热门文章**：基于浏览量排序，Redis 缓存
+14. **浏览量统计**：先写 Redis，定时同步到 MySQL，降低数据库写压力
+15. **收藏夹与阅读历史**：登录用户可收藏文章、记录阅读历史
+16. **个人 Feed**：基于关注用户生成文章动态流
+
+### 评论与互动
+17. **评论系统**：一级评论 + 嵌套回复、评论编辑、级联删除
+18. **评论置顶/加精**：管理员可对评论置顶或加精
+19. **评论举报**：用户可举报评论，管理员后台审核
+20. **点赞系统**：文章点赞、评论点赞、批量点赞状态查询
+
+### 通知与消息
+21. **站内通知**：评论回复、点赞、关注、私信、勋章颁发等事件触发通知
+22. **通知分类与过滤**：按类型过滤通知列表，支持未读数实时统计
+23. **WebSocket 实时推送**：`/ws/notifications` 长连接，新通知实时推送给在线用户
+24. **邮件通知渠道**：站内通知产生时异步发送邮件提醒给已验证邮箱
+25. **站内私信**：用户间一对一私信，会话列表与未读数
+
+### 管理后台
+26. **分类/标签管理**：管理员创建、更新、删除
+27. **文章批量操作**：管理员批量删除文章
+28. **评论批量操作**：管理员批量删除评论
+29. **用户管理**：管理员列表、详情、启用/禁用、修改角色、批量删除
+30. **勋章系统**：管理员创建勋章、颁发/收回勋章；用户个人资料展示勋章
+31. **审计日志**：自动记录管理员写操作，支持过滤与 CSV 导出
+32. **站点统计**：管理员仪表盘统计用户数/文章数/评论数等
+
+### 基础设施
+33. **Redis 缓存**：分类列表、标签列表、热门文章、文章详情，失败自动降级
+34. **统一响应格式**：统一错误码、统一 JSON 响应
+35. **中间件**：请求日志、panic 恢复、跨域、JWT 认证、管理员权限、审计日志
+36. **接口限流**：基于客户端 IP / 用户维度的固定窗口限流，支持 Redis 分布式限流
+37. **健康检查**：`/health` 接口检查 MySQL、Redis 依赖状态
+38. **优雅关闭**：收到 SIGINT/SIGTERM 后等待正在处理的请求完成再退出
+39. **Prometheus 监控**：自动收集请求数、耗时、请求/响应大小指标，暴露 `/metrics` 接口
+40. **链路追踪**：基于 OpenTelemetry + OTLP，集成 Jaeger/Tempo 定位慢请求
+41. **MySQL 读写分离**：基于 GORM dbresolver 插件，读请求自动路由到只读从库
+42. **单元测试**：service/config/utils 层单元测试，使用 SQLite 内存数据库隔离
+43. **多环境配置**：基于 Viper 支持 `.env` / `config.yaml` / 环境变量多来源加载
 
 ## 项目结构
 
@@ -53,11 +83,11 @@ blog/
 ├── database/            # MySQL + Redis 连接初始化
 ├── docs/                # Swagger 自动生成的 API 文档
 ├── handler/             # HTTP 请求处理器
-├── middleware/          # JWT 认证、日志、恢复、跨域、管理员权限
+├── middleware/          # JWT 认证、日志、恢复、跨域、管理员权限、限流
 ├── model/               # 数据模型与请求/响应结构
 ├── router/              # 路由注册
-├── service/             # 业务逻辑层 + Redis 缓存
-├── utils/               # JWT、密码加密、统一响应、日志
+├── service/             # 业务逻辑层 + Redis 缓存 + WebSocket Hub
+├── utils/               # JWT、密码加密、统一响应、日志、邮件发送
 ├── uploads/             # 上传文件目录
 ├── frontend/            # Vue 3 前端项目
 │   ├── src/
@@ -358,8 +388,8 @@ go test ./...
 
 当前已覆盖：
 - `config`：默认配置、环境变量覆盖、DSN/Addr 方法
-- `utils`：密码哈希与校验
-- `service`：用户注册、登录、资料更新（使用 SQLite 内存数据库）
+- `utils`：密码哈希与校验、国际化、JWT
+- `service`：用户注册/登录/资料更新、文章 CRUD/批量删除/搜索、评论/评论举报、点赞、关注、私信、收藏、阅读历史、Feed、审计日志、站点统计、通知（含邮件与 WebSocket Hub）
 
 ## 环境变量
 
@@ -385,6 +415,7 @@ go test ./...
 | EMAIL_PASSWORD | - | 邮箱密码/授权码 |
 | EMAIL_FROM | - | 发件人显示名称 |
 | EMAIL_ENABLE_SSL | true | 是否启用 SMTP SSL |
+| EMAIL_NOTIFICATION_EMAIL_ENABLED | false | 是否启用站内通知邮件提醒 |
 | EMAIL_VERIFICATION_ENABLED | false | 是否启用邮箱验证 |
 | EMAIL_VERIFICATION_REQUIRED | false | 是否必须验证后才能登录 |
 | EMAIL_VERIFICATION_CODE_TTL_MIN | 30 | 验证码有效期（分钟） |
@@ -666,10 +697,27 @@ curl -X POST http://localhost:8080/api/auth/verify-email \
 
 ### 通知（需登录）
 
+#### WebSocket 实时通知
+
+前端建立 WebSocket 连接（token 通过 query 参数传递）：
+
+```javascript
+const ws = new WebSocket('ws://localhost:8080/ws/notifications?token=<jwt>');
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  console.log(msg.event, msg.data); // event: "notification"
+};
+```
+
 #### 获取通知列表
 
 ```bash
+# 全部通知
 curl http://localhost:8080/api/notifications \
+  -H "Authorization: Bearer <token>"
+
+# 按类型过滤（comment_reply/post_like/comment_like/follow/message/badge_award）
+curl "http://localhost:8080/api/notifications?type=follow" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -683,7 +731,12 @@ curl http://localhost:8080/api/notifications/unread-count \
 #### 标记通知为已读
 
 ```bash
+# 单条已读
 curl -X PUT http://localhost:8080/api/notifications/1/read \
+  -H "Authorization: Bearer <token>"
+
+# 全部已读
+curl -X PUT http://localhost:8080/api/notifications/read-all \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -697,6 +750,138 @@ curl http://localhost:8080/api/audit-logs?page_size=20 \
 ```
 
 管理员的 POST/PUT/DELETE/PATCH 操作会自动写入 audit_logs 表。
+
+### 用户关注（需登录）
+
+```bash
+# 关注用户
+curl -X POST http://localhost:8080/api/users/2/follow \
+  -H "Authorization: Bearer <token>"
+
+# 取消关注
+curl -X DELETE http://localhost:8080/api/users/2/follow \
+  -H "Authorization: Bearer <token>"
+
+# 粉丝列表
+curl http://localhost:8080/api/users/2/followers
+
+# 关注列表
+curl http://localhost:8080/api/users/2/following
+```
+
+### 私信（需登录）
+
+```bash
+# 发送私信
+curl -X POST http://localhost:8080/api/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"receiver_id":2,"content":"你好"}'
+
+# 会话列表
+curl http://localhost:8080/api/messages/conversations \
+  -H "Authorization: Bearer <token>"
+
+# 与某用户的聊天记录
+curl http://localhost:8080/api/messages/2 \
+  -H "Authorization: Bearer <token>"
+
+# 未读私信数
+curl http://localhost:8080/api/messages/unread-count \
+  -H "Authorization: Bearer <token>"
+```
+
+### 收藏夹与阅读历史（需登录）
+
+```bash
+# 收藏文章
+curl -X POST http://localhost:8080/api/posts/1/favorite \
+  -H "Authorization: Bearer <token>"
+
+# 取消收藏
+curl -X DELETE http://localhost:8080/api/posts/1/favorite \
+  -H "Authorization: Bearer <token>"
+
+# 我的收藏
+curl http://localhost:8080/api/auth/favorites \
+  -H "Authorization: Bearer <token>"
+
+# 我的阅读历史
+curl http://localhost:8080/api/auth/read-history \
+  -H "Authorization: Bearer <token>"
+```
+
+### 个人 Feed（需登录）
+
+```bash
+curl http://localhost:8080/api/feed \
+  -H "Authorization: Bearer <token>"
+```
+
+### 评论举报
+
+```bash
+# 举报评论（需登录）
+curl -X POST http://localhost:8080/api/comments/1/reports \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"reason":"垃圾广告"}'
+
+# 管理员查看举报列表
+curl http://localhost:8080/api/comment-reports \
+  -H "Authorization: Bearer <admin-token>"
+
+# 管理员处理举报
+curl -X PUT http://localhost:8080/api/comment-reports/1/status \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"status":"resolved"}'
+```
+
+### 勋章系统（管理员）
+
+```bash
+# 创建勋章
+curl -X POST http://localhost:8080/api/badges \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"name":"优秀作者","description":"发表 10 篇以上优质文章","icon_url":"/uploads/badge.png"}'
+
+# 颁发勋章
+curl -X POST http://localhost:8080/api/badges/award \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"user_id":2,"badge_id":1,"reason":"贡献突出"}'
+
+# 收回勋章
+curl -X DELETE http://localhost:8080/api/user-badges/1 \
+  -H "Authorization: Bearer <admin-token>"
+
+# 获取用户勋章
+curl http://localhost:8080/api/users/2/badges
+```
+
+### 管理员批量操作
+
+```bash
+# 批量删除文章
+curl -X POST http://localhost:8080/api/admin/posts/batch-delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"ids":[1,2,3]}'
+
+# 批量删除评论
+curl -X POST http://localhost:8080/api/admin/comments/batch-delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"ids":[1,2,3]}'
+
+# 批量删除用户
+curl -X POST http://localhost:8080/api/admin/users/batch-delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"ids":[2,3]}'
+```
 
 ### 分类
 
@@ -932,6 +1117,12 @@ Authorization: Bearer <你的 token>
 33. **审计日志**：c.Next() 后读取用户上下文，异步记录管理员写操作
 34. **读写分离**：GORM dbresolver 插件配置只读从库，读操作自动负载均衡
 35. **Meilisearch 搜索**：文章变更同步索引，搜索接口优先搜索引擎，失败降级 MySQL
+36. **WebSocket 实时推送**：用户维度 Hub、心跳保活、多端在线、通知实时下发
+37. **邮件通知渠道**：站内通知异步发送邮件，仅发给已验证邮箱
+38. **批量管理操作**：管理员批量删除文章/评论/用户
+39. **用户关注与私信**：关注关系、粉丝/关注列表、一对一私信
+40. **定时发布与草稿自动保存**：文章定时发布、临时草稿缓存
+41. **评论举报与审核**：用户举报、管理员处理状态流转
 
 ## 后续可扩展
 
@@ -954,3 +1145,14 @@ Authorization: Bearer <你的 token>
 - [x] 操作审计日志：记录管理员关键操作
 - [x] MySQL 读写分离：主库写、从库读
 - [x] 文章搜索优化：接入 Elasticsearch 或 Meilisearch
+- [x] WebSocket 实时通知推送
+- [x] 站内通知邮件渠道
+- [x] 管理员批量删除文章/评论/用户
+- [x] 用户关注与私信
+- [x] 评论举报与审核
+- [ ] 用户通知偏好设置：按类型/渠道开关通知
+- [ ] Redis Pub/Sub 多实例 WebSocket 横向扩展
+- [ ] 站点地图（sitemap.xml）与 RSS 订阅
+- [ ] 文章导入/导出（Markdown / YAML Front Matter）
+- [ ] 内容审核（敏感词过滤 / AI 审核）
+- [ ] 文章版本历史与 diff 对比
